@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>EstudoQuest</title>
+  <meta name="description" content="Seu caderno, videoaulas, tarefas e timer de foco — com XP e coleção.">
+  <meta name="theme-color" content="#110c16">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css">
+  <!-- Abre a conexão com o YouTube antes de precisar: vídeos e miniaturas carregam mais rápido -->
+  <link rel="preconnect" href="https://www.youtube.com">
+  <link rel="preconnect" href="https://i.ytimg.com">
+</head>
+<body>
+  <!-- Barra do topo: logo, busca, timer (aparece quando ativo) e perfil/XP -->
+  <header class="topbar">
+    <a href="#/home" class="logo" aria-label="Início">🌙<span>EstudoQuest</span></a>
+    <form id="searchForm" class="search" role="search">
+      <input id="searchInput" type="search" placeholder="Buscar notas, aulas, tarefas…" aria-label="Buscar">
+    </form>
+    <a href="#/focus" id="timerPill" class="pill timer-pill" hidden>🍅 <span data-timer>25:00</span></a>
+    <a href="#/profile" id="xpPill" class="pill xp-pill" title="Perfil e configurações">⚙️</a>
+  </header>
+
+  <!-- Cada "tela" é desenhada aqui dentro pelo app.js -->
+  <main id="view"></main>
+
+  <!-- Menu de baixo (estilo app de celular) -->
+  <nav class="tabbar" aria-label="Navegação principal">
+    <a href="#/home" data-tab="home"><span>🏠</span>Início</a>
+    <a href="#/notes" data-tab="notes"><span>📝</span>Notas</a>
+    <a href="#/videos" data-tab="videos"><span>🎬</span>Aulas</a>
+    <a href="#/tasks" data-tab="tasks"><span>✅</span>Tarefas</a>
+    <a href="#/focus" data-tab="focus"><span>⏱️</span>Foco</a>
+  </nav>
+
+  <div id="toasts" aria-live="polite"></div>
+  <dialog id="dialog"><form id="dialogForm" method="dialog"></form></dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
