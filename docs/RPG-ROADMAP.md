@@ -54,7 +54,7 @@ Each phase ships on its own, keeps all features working, and adds an end-to-end 
 - Reuse `levelInfo`, `addXP` and `ACHIEVEMENTS`.
 - **Test:** stats computed from a seeded state; old backup loads.
 
-### Phase 3: Interactive boss battles
+### Phase 3: Interactive boss battles ✅ (v1.8: flashcard or AI battles; each card fights once per day; wrong answers return the card to today's review; plus Diablo-style gear that scales with real attributes and never adds to them)
 - Optional "⚔️ Enfrentar" on the weekly boss: quiz questions drawn from the subject's practiced nodes (AI) or from due flashcards (offline fallback).
 - A correct answer deals damage (added to focus damage). A wrong answer shows an explanation and offers a "practice this" card. No HP loss for the player.
 - Reuse `runQuiz` (add a `onAnswer` hook) and `bossInfo` (`dmg = focus + battle`).

@@ -154,6 +154,8 @@ function characterSheetHTML() {
         </details>`;
       }).join('')}</div>
 
+      ${gearSheetHTML()}
+
       <h3 class="char-h">🎨 Personalizar</h3>
       <div class="cust-row"><span class="cust-label">Companheiro</span><div class="species">${Object.entries(SPECIES).map(([id, sp]) => {
         const open = speciesUnlocked(id), on = (p.species || 'kitsune') === id, u = sp.unlock;

@@ -18,8 +18,9 @@
    Procure por "✏️ PERSONALIZE" para achar os pontos de customização.
    O editor de notas fica em editor.js, o assistente de IA em ai.js,
    o mascote, os Desejos, o chefe e os sons de foco em game.js, as
-   árvores de conhecimento em skills.js e a ficha do personagem
-   (atributos e personalização) em character.js.
+   árvores de conhecimento em skills.js, a ficha do personagem
+   (atributos e personalização) em character.js e as batalhas e o
+   equipamento em battle.js.
    ===================================================================== */
 
 
@@ -100,6 +101,8 @@ function defaultState() {
     daily: {},    // contadores por dia, ex.: { '2026-10-30': { reviews: 5, parked: 1 } }
     exams: [],    // provas: { id, name, date (AAAA-MM-DD) }
     quizzes: [],  // quizzes feitos: { at, score, total, title, videoId?, noteId?, nodeId? }
+    battles: [],  // batalhas contra o chefe: { id, at, week, mode, subject, dmg, correct, total, cardIds }
+    gear: { items: [], equipped: { weapon: '', armor: '', charm: '' } }, // equipamento (ver battle.js)
     skillNodes: [], // árvores de conhecimento (ver skills.js): { id, subject, title, icon, noteIds, videoIds, requires, order, peak, peakAt }
     profile: {
       xp: 0, gamification: true, achievements: {},
@@ -162,6 +165,7 @@ function normalize(s) {
   });
   return {
     ...d, ...s, notes,
+    gear: { ...d.gear, ...s.gear, equipped: { ...d.gear.equipped, ...s.gear?.equipped } },
     profile: { ...d.profile, ...s.profile, equipped: { ...d.profile.equipped, ...s.profile?.equipped }, attrPeak: { ...d.profile.attrPeak, ...s.profile?.attrPeak } },
     settings: { ...d.settings, ...s.settings },
     timer: { ...d.timer, ...s.timer },
@@ -271,6 +275,9 @@ const ACHIEVEMENTS = [
   { id: 'attr-3', icon: '⭐', name: 'Especialista', desc: 'Leve um atributo ao nível 3', test: () => Object.keys(ATTRS).some(k => attrLevel(attrPoints(k)).level >= 3) },
   { id: 'attr-all', icon: '⚖️', name: 'Equilíbrio', desc: 'Leve os três atributos ao nível 3', test: () => Object.keys(ATTRS).every(k => attrLevel(attrPoints(k)).level >= 3) },
   { id: 'species', icon: '🥚', name: 'Nova Espécie', desc: 'Desbloqueie uma espécie de companheiro', test: s => (s.profile.speciesSeen || []).length >= 1 },
+  { id: 'battle-1', icon: '⚔️', name: 'Primeira Batalha', desc: 'Enfrente o chefe numa batalha de perguntas', test: s => (s.battles || []).some(b => b.total > 0) },
+  { id: 'battle-perfect', icon: '💥', name: 'Golpe Perfeito', desc: 'Acerte todas as perguntas de uma batalha', test: s => (s.battles || []).some(b => b.total >= 3 && b.correct === b.total) },
+  { id: 'gear-legend', icon: '🗡️', name: 'Arma Lendária', desc: 'Encontre um equipamento lendário', test: s => (s.gear?.items || []).some(i => i.rarity === 'lendario') },
   { id: 'night', icon: '🦉', name: 'Coruja', desc: 'Termine uma sessão depois das 23h', test: s => s.sessions.some(x => { const h = new Date(x.endedAt).getHours(); return h >= 23 || h < 4; }) },
 ];
 
@@ -367,6 +374,7 @@ const QUESTS = [
   { id: 'cards5', icon: '🃏', text: 'Revise 5 flashcards', goal: 5, val: d => d.reviews, when: s => s.cards.length >= 5 },
   { id: 'park1', icon: '💭', text: 'Use o 💭 em vez de pegar o celular', goal: 1, val: d => d.parked },
   { id: 'skill1', icon: '🌳', text: 'Avance um conceito na árvore', goal: 1, val: d => d.skillUps, when: s => s.skillNodes.length > 0 },
+  { id: 'battle1', icon: '⚔️', text: 'Enfrente o chefe numa batalha', goal: 1, val: d => d.battles, when: s => s.cards.length >= 4 || !!aiConfig().key },
   { id: 'quiz1', icon: '❓', text: 'Faça um quiz com a IA', goal: 1, val: d => d.quizzes, when: () => !!aiConfig().key },
 ];
 
@@ -391,6 +399,7 @@ function todayStats() {
     parked: daily.parked || 0,
     quizzes: daily.quizzes || 0,
     skillUps: daily.skillUps || 0,
+    battles: daily.battles || 0,
   };
 }
 
@@ -907,9 +916,10 @@ function viewHome(el) {
         <div class="grow">
           <div class="row between"><strong>${b.name}</strong><span class="muted small">${b.defeated ? 'derrotado!' : `${b.daysLeft} dia${b.daysLeft > 1 ? 's' : ''}`}</span></div>
           <div class="bar hp"><i style="width:${(b.left / b.hp) * 100}%"></i></div>
-          <div class="muted small">${b.defeated ? `Vitória! Você causou ${b.dmg} de dano esta semana. Novo chefe na segunda.` : `❤️ ${b.left}/${b.hp} de vida · cada minuto de foco = 1 de dano · prêmio: ${GAME.stardust.boss} ✦`}</div>
+          <div class="muted small">${b.defeated ? `Vitória! Você causou ${b.dmg} de dano esta semana. Novo chefe na segunda.` : `❤️ ${b.left}/${b.hp} de vida · cada minuto de foco = 1 de dano · prêmio: ${GAME.stardust.boss} ✦ + item raro`}</div>
         </div>
       </div>
+      <div class="row between boss-actions"><span class="muted small">⚔️ Acertos em batalha também causam dano</span><a class="btn small-btn primary" href="#/battle">⚔️ Enfrentar</a></div>
     </section>`;
     })() : ''}
 
@@ -1911,6 +1921,8 @@ function route() {
     case 'review': viewReview(el, a); break;
     case 'skills': a ? (b ? viewSkillNode(el, a, b) : viewSkillTree(el, a)) : viewSkills(el); break;
     case 'wish': viewWish(el); break;
+    case 'battle': viewBattle(el); break;
+    case 'arsenal': viewArsenal(el); break;
     default: viewHome(el);
   }
   document.querySelectorAll('.tabbar a').forEach(t => t.classList.toggle('on', t.dataset.tab === name || (name === 'home' && t.dataset.tab === 'home')));

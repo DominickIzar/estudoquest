@@ -44,6 +44,7 @@ Um app de estudos que junta num só lugar **caderno de notas**, **videoaulas com
 | `ai.js` | O assistente de IA (Gemini, plano grátis) |
 | `skills.js` | Árvores de conhecimento: conceitos por matéria, estágios Descoberto → Praticado → Dominado |
 | `character.js` | Ficha do personagem: atributos (Conhecimento, Disciplina, Maestria), classe e personalização |
+| `battle.js` | Batalhas contra o chefe (perguntas) e equipamento estilo Diablo |
 | `game.js` | Mascote, pó de estrela e Desejos, chefe da semana, rival, sons de foco, provas, lembrete no calendário |
 | `sw.js` + `manifest.webmanifest` + `icon.svg` | O que faz o app ser instalável e abrir offline |
 
@@ -68,6 +69,7 @@ O player oficial do YouTube permite ler "em que segundo o vídeo está", e é is
 - **Foco**: Pomodoro (foco, pausa curta, pausa longa), botão **"Só 5 minutinhos"** para vencer a preguiça de começar, vincular a sessão a uma tarefa, som e notificação ao terminar. O timer continua certo mesmo se você trocar de tela.
 - **Busca única** no topo: procura em notas, aulas (inclusive nas anotações com tempo) e tarefas.
 - **Gamificação (pode ser desligada no Perfil)**: XP, níveis, sequência de dias 🔥, 18 conquistas e uma coleção de 13 itens.
+- **Batalhas e equipamento (v1.8)**: veja a seção [Batalhas e equipamento](#️-batalhas-e-equipamento-v18).
 - **Ficha do personagem (v1.7)**: veja a seção [Ficha do personagem](#-ficha-do-personagem-v17).
 - **Árvores de conhecimento (v1.6)**: veja a seção [Árvores de conhecimento](#-árvores-de-conhecimento-v16). Plano das próximas fases em [`docs/RPG-ROADMAP.md`](docs/RPG-ROADMAP.md).
 - **IA que assiste as aulas e quiz interativo (v1.5)**: veja a seção [IA que assiste suas videoaulas](#-ia-que-assiste-suas-videoaulas-v15).
@@ -110,6 +112,9 @@ Perfil        { xp, gamification, achievements, shields, frozen[],
                 pity, wishes, bossWins[] }
 Prova         { id, name, date (AAAA-MM-DD) }
 Quiz feito    { at, score, total, title, videoId?, noteId?, nodeId? }
+Batalha       { id, at, week, mode ('cards'|'ai'), subject, dmg, correct, total, cardIds[] }
+Item          { id, slot, base, rarity, ilvl, subject, affixes[{k, v}], unique, name, power }
+gear          { items[], equipped { weapon, armor, charm } }
 Perfil (v1.7) + species, speciesSeen[], attrPeak { knowledge, discipline, mastery } (recordes)
 Conceito      { id, subject, title, icon, noteIds[], videoIds[], requires[] (pré-requisitos),
                 order, peak (maior estágio já alcançado), peakAt }
@@ -211,6 +216,24 @@ Cada uma foi inspirada num app que funciona para muita gente e adaptada para est
 - Ative o **Modo Foco** do celular durante o Pomodoro (Android: Bem-estar digital; iPhone: Ajustes → Foco). O app não consegue bloquear outros apps sozinho.
 - Crie um **alarme** no horário do seu plano com o nome "📚 EstudoQuest".
 - Coloque o ícone do app na **primeira tela** do celular, no lugar de uma rede social.
+
+---
+
+## ⚔️ Batalhas e equipamento (v1.8)
+
+Fase 3 do modo RPG. O chefe da semana agora também pode ser **enfrentado com perguntas** (botão ⚔️ Enfrentar no Início ou na ficha):
+
+- **🃏 Com seus flashcards** (grátis, funciona offline): múltipla escolha, com os cards difíceis primeiro. **Cada card luta uma vez por dia**, para a batalha não virar decoreba.
+- **✨ Com a IA**: perguntas novas criadas a partir das suas notas da matéria.
+- **Acerto = dano** no chefe (somado ao dano dos minutos de foco). Acertos seguidos fazem **combo**.
+- **Errar não tira nada:** você vê a resposta (com link para a nota), e o card **volta para a revisão de hoje**, para praticar.
+- **Recompensas:** XP, ✦ e **um item** por batalha (até 3 por dia; acertar mais dá itens melhores). Derrotar o chefe dá **item raro ou melhor garantido**.
+
+**Equipamento (estilo Diablo):** três espaços, ⚔️ Arma (dano base), 🛡️ Proteção (combo e proteção contra erros) e 💍 Amuleto (✦, XP e afinidade com matérias). Os itens têm raridade (comum, raro, épico, lendário), bônus aleatórios (como "+19% de dano em Física", "+53% de dano em cards difíceis" ou "protege o combo de 1 erro") e os **lendários têm poderes únicos** (Fênix, Erudito, Eclipse).
+
+**O equipamento não aumenta seus atributos.** Eles medem o que você aprendeu de verdade. É ao contrário: **cada item escala com um atributo real**. Um Grimório bate mais forte quanto maior o seu 📚 Conhecimento, uma Katana com 🔥 Disciplina, um Cajado com 👑 Maestria. Itens que você não quer viram ✦ ao desmontar, no 🎒 Arsenal.
+
+<img src="docs/telas/34-batalha-acerto.png" width="200"> <img src="docs/telas/36-batalha-saque.png" width="200"> <img src="docs/telas/37-arsenal.png" width="200"> <img src="docs/telas/38-ficha-equipamento.png" width="200">
 
 ---
 
@@ -358,6 +381,8 @@ Limites grátis aproximados (o Google muda de tempos em tempos; confira em AI St
 | Tamanho/qualidade das imagens salvas | `editor.js` → `IMG_MAX_WIDTH` e `IMG_QUALITY` |
 | Botões e "jeito" do assistente de IA | `ai.js` → `AI_ACTIONS` e `AI_SYSTEM` |
 | Regras de cada estágio da árvore | `skills.js` → `SKILL_RULES` |
+| Regras das batalhas (perguntas, dano, itens por dia) | `battle.js` → `BATTLE` |
+| Tipos de item, bônus e poderes lendários | `battle.js` → `GEAR_BASES`, `AFFIXES`, `UNIQUES` |
 | De onde vêm os pontos dos atributos | `character.js` → `ATTRS` |
 | Espécies do companheiro e como desbloquear | `character.js` → `SPECIES` |
 | Velocidade de subir nível de atributo | `character.js` → `attrLevel` (40 e 30) |

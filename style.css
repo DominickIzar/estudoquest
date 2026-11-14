@@ -641,3 +641,46 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 .3rem; }
   .char-top .pet.big .pet-acc { font-size: 1.9rem; }
 }
 .char-top .row.small > span { white-space: nowrap; }
+
+/* =====================================================================
+   v1.8: Batalhas e equipamento
+   ===================================================================== */
+.boss-actions { margin-top: .6rem; gap: .5rem; }
+.bar.hp.big { height: 12px; }
+.bar.hp.big i { transition: width .5s ease; }
+
+/* Arena */
+.boss-arena { position: relative; display: grid; place-items: center; height: 150px; }
+.boss-big { font-size: 5.5rem; line-height: 1; filter: drop-shadow(0 0 22px #a77ee866); animation: pet-bob 2.6s ease-in-out infinite; }
+.boss-big.hit { animation: boss-hit .45s ease; }
+.boss-big.beaten { filter: drop-shadow(0 0 26px var(--gold)); }
+@keyframes boss-hit { 0% { transform: translateX(0); filter: brightness(2.2) drop-shadow(0 0 12px #fff); } 25% { transform: translateX(-10px) rotate(-6deg); } 50% { transform: translateX(8px) rotate(4deg); } 100% { transform: none; } }
+.dmg-float { position: absolute; top: 18px; right: 22%; font-size: 1.8rem; font-weight: 900; color: var(--gold); text-shadow: 0 2px 0 #000, 0 0 14px #f0c46b; opacity: 0; pointer-events: none; }
+.dmg-float.show { animation: dmg-up 1s ease-out forwards; }
+@keyframes dmg-up { 0% { opacity: 0; transform: translateY(10px) scale(.7); } 20% { opacity: 1; transform: translateY(0) scale(1.15); } 100% { opacity: 0; transform: translateY(-38px) scale(1); } }
+.battle-hud { display: flex; justify-content: space-between; gap: .4rem; margin: .4rem 0 .6rem; padding: .35rem .6rem; background: var(--surface2); border-radius: 10px; font-variant-numeric: tabular-nums; }
+.battle .quiz-q { margin-top: .4rem; }
+.battle-end .gear-card { margin: .5rem auto 1rem; max-width: 420px; }
+
+/* Itens */
+.gear-list { display: grid; gap: .6rem; }
+.gear-card { border: 1px solid color-mix(in srgb, var(--rc) 70%, transparent); background: linear-gradient(160deg, color-mix(in srgb, var(--rc) 12%, var(--surface2)), var(--surface2) 60%); border-radius: 14px; padding: .7rem .8rem; }
+.gear-card.equipped { box-shadow: 0 0 0 2px var(--gold), 0 0 16px #f0c46b33; }
+.gear-card.r-lendario { box-shadow: 0 0 18px color-mix(in srgb, var(--rc) 50%, transparent); }
+.gear-head { display: flex; gap: .6rem; align-items: center; }
+.gear-icon { font-size: 2rem; width: 2.6rem; height: 2.6rem; display: grid; place-items: center; border-radius: 10px; background: #0006; border: 1px solid color-mix(in srgb, var(--rc) 60%, transparent); flex: none; }
+.gear-name { color: var(--rc); display: block; }
+.gear-lines { list-style: none; padding: 0; margin: .5rem 0; font-size: .86rem; display: grid; gap: .15rem; }
+.gear-lines li::before { content: "◆ "; color: var(--rc); font-size: .7em; }
+.gear-lines .uniq { color: var(--gold); font-weight: 700; }
+.new, .new-dot { font-style: normal; color: var(--gold); font-weight: 800; }
+.new-dot { background: #f0c46b26; border-radius: 99px; padding: 0 .4rem; font-size: .75rem; }
+
+/* Slots na ficha */
+.gear-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+.gear-slot { display: grid; justify-items: center; gap: .2rem; padding: .55rem .3rem; border-radius: 12px; background: var(--surface2); color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--rc, var(--border)) 70%, transparent); text-align: center; }
+.gear-slot small { font-size: .68rem; line-height: 1.2; color: var(--rc, var(--muted)); }
+.gear-slot .gs-icon { font-size: 1.8rem; }
+.gear-slot.empty { border-style: dashed; opacity: .7; }
+.gear-slot.empty small { color: var(--muted); }

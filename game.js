@@ -192,8 +192,9 @@ function bossInfo() {
   const ws = weekStart();
   const boss = GAME.bosses[Math.floor(ws.getTime() / 604800000) % GAME.bosses.length];
   const hp = state.settings.bossHP;
-  const dmg = minutesBetween(ws.getTime(), Infinity);
-  return { ...boss, hp, dmg, left: Math.max(0, hp - dmg), defeated: dmg >= hp, daysLeft: 7 - (new Date().getDay() + 6) % 7, week: isoDate(ws) };
+  const battle = (state.battles || []).filter(b => b.week === isoDate(ws)).reduce((a, b) => a + b.dmg, 0); // acertos em batalha (battle.js)
+  const dmg = minutesBetween(ws.getTime(), Infinity) + battle;
+  return { ...boss, hp, dmg, focusDmg: dmg - battle, battleDmg: battle, left: Math.max(0, hp - dmg), defeated: dmg >= hp, daysLeft: 7 - (new Date().getDay() + 6) % 7, week: isoDate(ws) };
 }
 
 function checkBoss() {
@@ -202,6 +203,7 @@ function checkBoss() {
   p.bossWins.push(b.week);
   addStardust(GAME.stardust.boss);
   if (gamOn()) toast(`⚔️ Você derrotou ${b.emoji} ${b.name}! +${GAME.stardust.boss} ✦`, 'big');
+  bossLoot(); // item raro ou melhor garantido (battle.js)
   checkAchievements();
 }
 
