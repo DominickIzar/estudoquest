@@ -42,6 +42,7 @@ Um app de estudos que junta num só lugar **caderno de notas**, **videoaulas com
 | `app.js` | Toda a lógica, dividida em 7 seções numeradas |
 | `editor.js` | O editor de notas estilo Notion (barra de formatação, menu "/", links, imagens) |
 | `ai.js` | O assistente de IA (Gemini, plano grátis) |
+| `skills.js` | Árvores de conhecimento: conceitos por matéria, estágios Descoberto → Praticado → Dominado |
 | `game.js` | Mascote, pó de estrela e Desejos, chefe da semana, rival, sons de foco, provas, lembrete no calendário |
 | `sw.js` + `manifest.webmanifest` + `icon.svg` | O que faz o app ser instalável e abrir offline |
 
@@ -66,6 +67,7 @@ O player oficial do YouTube permite ler "em que segundo o vídeo está", e é is
 - **Foco**: Pomodoro (foco, pausa curta, pausa longa), botão **"Só 5 minutinhos"** para vencer a preguiça de começar, vincular a sessão a uma tarefa, som e notificação ao terminar. O timer continua certo mesmo se você trocar de tela.
 - **Busca única** no topo: procura em notas, aulas (inclusive nas anotações com tempo) e tarefas.
 - **Gamificação (pode ser desligada no Perfil)**: XP, níveis, sequência de dias 🔥, 18 conquistas e uma coleção de 13 itens.
+- **Árvores de conhecimento (v1.6)**: veja a seção [Árvores de conhecimento](#-árvores-de-conhecimento-v16). Plano das próximas fases em [`docs/RPG-ROADMAP.md`](docs/RPG-ROADMAP.md).
 - **IA que assiste as aulas e quiz interativo (v1.5)**: veja a seção [IA que assiste suas videoaulas](#-ia-que-assiste-suas-videoaulas-v15).
 - **Mascote, Desejos e chefe da semana (v1.4)**: veja a seção [Mais jogo e mais hábito](#-mais-jogo-e-mais-hábito-v14).
 - **Hábito e foco (v1.2)**: veja a seção [Mecânicas para criar o hábito](#-mecânicas-para-criar-o-hábito-v12).
@@ -105,7 +107,10 @@ Perfil        { xp, gamification, achievements, shields, frozen[],
                 petName, stardust, inventory[], equipped {theme, acc, title},
                 pity, wishes, bossWins[] }
 Prova         { id, name, date (AAAA-MM-DD) }
-Quiz feito    { at, score, total, title }
+Quiz feito    { at, score, total, title, videoId?, noteId?, nodeId? }
+Conceito      { id, subject, title, icon, noteIds[], videoIds[], requires[] (pré-requisitos),
+                order, peak (maior estágio já alcançado), peakAt }
+Flashcard.correct  quantas vezes você acertou (cards antigos usam a caixa como estimativa)
 Videoaula.aiCache  respostas da IA guardadas (resumo, mapa…), para não gastar o limite de novo
 ```
 
@@ -203,6 +208,27 @@ Cada uma foi inspirada num app que funciona para muita gente e adaptada para est
 - Ative o **Modo Foco** do celular durante o Pomodoro (Android: Bem-estar digital; iPhone: Ajustes → Foco). O app não consegue bloquear outros apps sozinho.
 - Crie um **alarme** no horário do seu plano com o nome "📚 EstudoQuest".
 - Coloque o ícone do app na **primeira tela** do celular, no lugar de uma rede social.
+
+---
+
+## 🌳 Árvores de conhecimento (v1.6)
+
+Primeira fase da evolução para um RPG de aprendizado (plano completo em [`docs/RPG-ROADMAP.md`](docs/RPG-ROADMAP.md)). Cada matéria (a mesma pasta das notas e curso das aulas) vira uma **árvore de conceitos**, e cada conceito sobe de estágio **só com provas de aprendizado**:
+
+| Estágio | Como conquistar |
+|---|---|
+| 🔍 **Descoberto** | Assistir a ≥ 10% de uma aula ligada, ou escrever na nota ligada. |
+| 🛠️ **Praticado** | Lembrar 3 flashcards corretamente, ou fazer ≥ 60% num quiz. |
+| 👑 **Dominado** | Ter ≥ 3 flashcards, 80% deles lembrados **em 2 dias diferentes** (revisão espaçada) **e** passar no desafio do conceito com ≥ 80% (ou lembrar em 3 dias diferentes). |
+
+- **Montar a árvore:** em 🌳 (Notas ou Aulas) → escolha a matéria → "Montar com minhas aulas e notas" (as aulas viram uma trilha em ordem) ou "✨ Sugerir um mapa de conceitos com IA" (a IA descobre quais conceitos dependem de quais). Depois, ✏️ Editar liga notas, aulas e pré-requisitos (o app impede ciclos).
+- **Tudo se conecta:** as anotações das aulas ligadas contam sozinhas. Os quizzes feitos na aula, na nota ou no ⚔️ desafio do conceito também contam, incluindo quizzes antigos. Os flashcards da nota alimentam o domínio.
+- **Por conceito:** "O que fazer agora" mostra a próxima ação útil, uma checklist mostra os números reais de cada estágio, há revisão só dos cards **vencidos** daquele conceito (não dá para pular o espaçamento) e flashcards criados com IA a partir das **suas** notas/aula.
+- **Sem punição:** o maior estágio conquistado fica guardado. Se um card for esquecido, aparece só um aviso gentil de revisão.
+- **No resto do app:** chips 🌳 nas páginas de aula e nota, **uma** linha de "Próximo passo" no Início, XP e ✦ ao subir de estágio, 3 conquistas e uma missão diária.
+- **Acessível:** o estágio aparece em ícone e texto (não só cor), os nós são links com descrição completa para leitor de tela, e as animações desligam com "reduzir movimento".
+
+<img src="docs/telas/25-arvore.png" width="200"> <img src="docs/telas/26-conceito.png" width="200"> <img src="docs/telas/27-conceito-dominado.png" width="200"> <img src="docs/telas/28-arvore-ia.png" width="200">
 
 ---
 
@@ -307,6 +333,8 @@ Limites grátis aproximados (o Google muda de tempos em tempos; confira em AI St
 | Cor do marca-texto | `editor.js` → `MARK_COLOR` |
 | Tamanho/qualidade das imagens salvas | `editor.js` → `IMG_MAX_WIDTH` e `IMG_QUALITY` |
 | Botões e "jeito" do assistente de IA | `ai.js` → `AI_ACTIONS` e `AI_SYSTEM` |
+| Regras de cada estágio da árvore | `skills.js` → `SKILL_RULES` |
+| Recompensas ao subir de estágio | `skills.js` → `SKILL_REWARDS` |
 | Botões da aba ✨ IA das aulas | `ai.js` → `VIDEO_AI_ACTIONS` |
 | Quantidade e estilo das perguntas do quiz | `ai.js` → `QUIZ_PROMPT` |
 | XP e ✦ do quiz | `app.js` → `CONFIG.xp.quizCorrect`; `game.js` → `GAME.stardust.quizCorrect` / `quizPerfect` |

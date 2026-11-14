@@ -499,3 +499,95 @@ dialog { max-height: 90vh; }
 .quiz-score { font-size: 3rem; font-weight: 800; color: var(--gold); text-shadow: 0 0 18px #f0c46b66; }
 .ai-out a.ts { cursor: pointer; }
 .tabs .tab { flex: 1; white-space: nowrap; padding: .5rem .25rem; font-size: .9rem; }
+
+/* =====================================================================
+   v1.6: Árvores de conhecimento
+   ===================================================================== */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:root { --st-none: #4a3d58; --st-disc: var(--accent); --st-prac: var(--accent2); --st-mast: var(--gold); }
+
+/* Barra empilhada de progresso da matéria */
+.skill-bar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--surface2); margin: .5rem 0; }
+.skill-bar i { display: block; height: 100%; transition: width .6s ease; }
+.sb-m { background: var(--st-mast); } .sb-p { background: var(--st-prac); } .sb-d { background: var(--st-disc); }
+.subject-list { display: grid; gap: .6rem; }
+.subject-card { margin: 0; }
+.subject-card:hover { border-color: var(--accent); }
+.skill-help summary { cursor: pointer; font-weight: 700; }
+.skill-help ul { margin: .5rem 0; }
+.tree-title { margin-bottom: .2rem; }
+.tree-counts { margin: 0 0 .8rem; }
+
+/* Próximo passo (Início e árvore) */
+.next-step { display: grid; gap: .1rem; border-color: #f0c46b55; background: linear-gradient(135deg, color-mix(in srgb, var(--gold) 9%, var(--surface)), var(--surface) 70%); }
+.next-step strong { font-size: 1.02rem; }
+
+/* A árvore */
+.skill-tree { position: relative; display: grid; gap: 2.4rem; padding: 1rem 0 2rem; }
+.skill-edges { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.skill-edges path { fill: none; stroke: var(--st-none); stroke-width: 2.5; stroke-dasharray: 5 6; opacity: .9; }
+.skill-edges path.e-discovered { stroke: var(--st-disc); stroke-dasharray: none; opacity: .55; }
+.skill-edges path.e-practiced { stroke: var(--st-prac); stroke-dasharray: none; opacity: .7; }
+.skill-edges path.e-mastered { stroke: var(--st-mast); stroke-dasharray: none; filter: drop-shadow(0 0 3px #f0c46b88); }
+.skill-layer { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 1.2rem 1rem; }
+.skill-node { width: 104px; display: grid; justify-items: center; gap: .25rem; text-align: center; color: var(--text); border-radius: 14px; padding: .2rem; }
+.skill-node:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+
+/* O "orbe": o anel mostra o progresso até o próximo estágio */
+.sn-orb { --c: var(--st-none); position: relative; width: 66px; height: 66px; border-radius: 50%; display: grid; place-items: center;
+  background: conic-gradient(var(--c) calc(var(--ring) * 1%), #ffffff14 0); transition: transform .2s ease; }
+.sn-orb::before { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #3a2a50, var(--surface)); }
+.sn-icon { position: relative; font-size: 1.7rem; line-height: 1; }
+.sn-due { position: absolute; top: -4px; right: -4px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 99px; background: var(--btn-from); color: #fff; font-size: .72rem; font-weight: 800; display: grid; place-items: center; border: 2px solid var(--bg); }
+.sn-title { font-size: .8rem; font-weight: 700; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sn-stage { font-size: .66rem; color: var(--muted); }
+.skill-node:hover .sn-orb { transform: scale(1.06); }
+.s-none .sn-orb { --c: var(--st-none); opacity: .75; }
+.s-none .sn-icon { filter: grayscale(.8) brightness(.8); }
+.s-discovered .sn-orb { --c: var(--st-disc); }
+.s-practiced .sn-orb { --c: var(--st-prac); }
+.s-mastered .sn-orb { --c: var(--st-mast); box-shadow: 0 0 18px #f0c46b66; }
+.s-mastered .sn-orb::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: linear-gradient(115deg, transparent 40%, #fff4 50%, transparent 60%); background-size: 250% 100%; animation: sn-shine 4s ease-in-out infinite; }
+.s-mastered .sn-stage { color: var(--gold); }
+.is-next .sn-orb { animation: sn-pulse 2.2s ease-in-out infinite; }
+@keyframes sn-shine { 0%, 60% { background-position: 120% 0; } 100% { background-position: -120% 0; } }
+@keyframes sn-pulse { 0%, 100% { box-shadow: 0 0 0 0 #f0c46b00; } 50% { box-shadow: 0 0 0 7px #f0c46b33; } }
+
+/* Árvore vazia */
+.empty-tree { text-align: center; }
+.tree-seed { font-size: 3rem; animation: pet-bob 3s ease-in-out infinite; }
+.col-actions { display: grid; gap: .5rem; margin: .8rem 0; }
+.col-actions .btn { justify-content: flex-start; white-space: normal; text-align: left; }
+
+/* Página do conceito */
+.node-hero { display: flex; gap: 1rem; align-items: center; margin-bottom: .8rem; }
+.node-hero h1 { margin: 0 0 .2rem; }
+.sn-orb.big { width: 92px; height: 92px; flex: none; }
+.sn-orb.big .sn-icon { font-size: 2.4rem; }
+.node-status { margin: 0 0 .5rem; font-weight: 700; }
+.stage-track { display: flex; gap: .3rem; list-style: none; padding: 0; margin: 0; }
+.stage-track li { flex: 1; display: grid; justify-items: center; gap: .1rem; padding: .3rem .2rem; border-radius: 10px; background: var(--surface2); font-size: 1rem; opacity: .45; }
+.stage-track li span { font-size: .62rem; color: var(--muted); }
+.stage-track li.on { opacity: 1; box-shadow: inset 0 0 0 1px var(--gold); }
+.gentle { background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 12px; padding: .6rem .8rem; font-size: .9rem; }
+.stage-block { padding: .5rem 0; border-top: 1px solid var(--border); }
+.stage-block:first-of-type { border-top: 0; }
+.stage-block h3 { margin: .2rem 0 .4rem; font-size: .95rem; display: flex; gap: .4rem; align-items: center; }
+.stage-block.reached h3 { color: var(--gold); }
+.tag-ok { font-size: .65rem; background: #f0c46b26; color: var(--gold); border-radius: 99px; padding: .05rem .5rem; font-weight: 700; }
+.checklist { list-style: none; padding: 0; margin: 0; display: grid; gap: .35rem; }
+.checklist li { display: flex; gap: .5rem; align-items: flex-start; font-size: .88rem; }
+.checklist .ck { flex: none; width: 1.3rem; height: 1.3rem; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--border); font-size: .75rem; color: var(--muted); }
+.checklist li.done .ck { background: var(--ok); border-color: var(--ok); color: #10200a; font-weight: 800; }
+.checklist .bar { margin: .3rem 0 0; }
+.node-chips { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin: .3rem 0 .6rem; font-size: .85rem; }
+.node-chip { display: inline-flex; gap: .3rem; align-items: center; padding: .2rem .6rem; border-radius: 99px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); font-size: .82rem; }
+.node-chip.s-mastered { border-color: var(--gold); }
+.node-chip.s-practiced { border-color: var(--st-prac); }
+.node-chip.s-discovered { border-color: var(--st-disc); }
+
+/* Editar conceito */
+fieldset { border: 1px solid var(--border); border-radius: 10px; margin: 0 0 .7rem; padding: .4rem .7rem .6rem; max-height: 180px; overflow-y: auto; }
+legend { font-size: .85rem; color: var(--muted); padding: 0 .3rem; }
+.check-row { display: flex; gap: .5rem; align-items: center; color: var(--text); margin: .25rem 0; font-size: .9rem; }
+.check-row input { width: 18px; height: 18px; accent-color: var(--accent); flex: none; margin: 0; }

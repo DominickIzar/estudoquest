@@ -195,7 +195,7 @@ async function generateQuiz(context, video = null) {
  * opções: title, videoId (para "rever o trecho"), seek(t) (se o vídeo está aberto),
  *         onMissed(html) (coloca os erros como flashcards na nota).
  */
-function runQuiz(questions, { title = 'Quiz', videoId = '', seek = null, onMissed = null } = {}) {
+function runQuiz(questions, { title = 'Quiz', videoId = '', seek = null, onMissed = null, source = {} } = {}) {
   const dlg = document.getElementById('dialog');
   const form = document.getElementById('dialogForm');
   form.onsubmit = e => e.preventDefault();
@@ -243,11 +243,12 @@ function runQuiz(questions, { title = 'Quiz', videoId = '', seek = null, onMisse
     const total = questions.length, perfect = score === total;
     const xp = score * CONFIG.xp.quizCorrect;
     const dust = score * GAME.stardust.quizCorrect + (perfect ? GAME.stardust.quizPerfect : 0);
-    state.quizzes.push({ at: now(), score, total, title });
+    state.quizzes.push({ at: now(), score, total, title, ...source }); // source liga o quiz à aula/nota/conceito
     bump('quizzes');
     if (dust) addStardust(dust);
     if (xp) addXP(xp, `quiz ${score}/${total} · +${dust} ✦`);
     else { save(); checkQuests(); }
+    checkSkills();
     const msg = perfect ? '🏆 Gabaritou!' : score >= total * 0.6 ? '✨ Mandou bem!' : '💪 Bom treino! Errar agora é o que faz lembrar na prova.';
     form.innerHTML = `
       <div class="quiz-result">
@@ -293,13 +294,13 @@ async function startQuiz({ getContext, video = null, ...opts }) {
  * Janela do assistente para uma nota.
  * getContext() devolve o texto da nota; onInsert(html) coloca a resposta na nota.
  */
-function aiDialog({ getContext, onInsert }) {
+function aiDialog({ getContext, onInsert, source = {} }) {
   const dlg = document.getElementById('dialog');
   const form = document.getElementById('dialogForm');
   const cfg = aiConfig();
   form.onsubmit = e => e.preventDefault();
 
-  if (!cfg.key) return aiSetupDialog(() => aiDialog({ getContext, onInsert }));
+  if (!cfg.key) return aiSetupDialog(() => aiDialog({ getContext, onInsert, source }));
 
   form.innerHTML = `
     <h2>✨ Assistente</h2>
@@ -342,7 +343,7 @@ function aiDialog({ getContext, onInsert }) {
 
   form.querySelectorAll('[data-ai]').forEach(b => b.onclick = () => {
     const a = AI_ACTIONS.find(x => x.id === b.dataset.ai);
-    if (a.quiz) startQuiz({ getContext, title: 'Quiz da nota', onMissed: onInsert });
+    if (a.quiz) startQuiz({ getContext, title: 'Quiz da nota', onMissed: onInsert, source });
     else run(a.prompt, a.heading);
   });
   const q = form.querySelector('#aiQuestion');
@@ -366,5 +367,6 @@ function openNoteAI(note, ed) {
   aiDialog({
     getContext: () => `${note.title ? `Título: ${note.title}\n\n` : ''}${ed.text()}`,
     onInsert: html => ed.appendHTML(html),
+    source: { noteId: note.id, ...(note.videoId ? { videoId: note.videoId } : {}) },
   });
 }

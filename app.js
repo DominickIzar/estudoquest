@@ -16,8 +16,9 @@
      7. Roteador e inicialização
 
    Procure por "✏️ PERSONALIZE" para achar os pontos de customização.
-   O editor de notas fica em editor.js, o assistente de IA em ai.js e
-   o mascote, os Desejos, o chefe e os sons de foco em game.js.
+   O editor de notas fica em editor.js, o assistente de IA em ai.js,
+   o mascote, os Desejos, o chefe e os sons de foco em game.js e as
+   árvores de conhecimento em skills.js.
    ===================================================================== */
 
 
@@ -97,7 +98,8 @@ function defaultState() {
     parking: [],  // distrações anotadas durante o foco: { id, text, createdAt }
     daily: {},    // contadores por dia, ex.: { '2026-10-30': { reviews: 5, parked: 1 } }
     exams: [],    // provas: { id, name, date (AAAA-MM-DD) }
-    quizzes: [],  // quizzes feitos: { at, score, total, title }
+    quizzes: [],  // quizzes feitos: { at, score, total, title, videoId?, noteId?, nodeId? }
+    skillNodes: [], // árvores de conhecimento (ver skills.js): { id, subject, title, icon, noteIds, videoIds, requires, order, peak, peakAt }
     profile: {
       xp: 0, gamification: true, achievements: {},
       shields: 0, frozen: [],       // escudos guardados e dias "salvos" por escudo
@@ -257,6 +259,13 @@ const ACHIEVEMENTS = [
   { id: 'legend', icon: '👑', name: 'Sorte Lendária', desc: 'Ganhe um item lendário', test: s => (s.profile.inventory || []).some(id => itemById(id)?.rarity === 'lendario') },
   { id: 'quiz-1', icon: '❓', name: 'Hora da Prova (de Treino)', desc: 'Faça um quiz com a IA', test: s => (s.quizzes || []).length >= 1 },
   { id: 'quiz-perfect', icon: '💯', name: 'Gabaritou!', desc: 'Acerte todas as perguntas de um quiz', test: s => (s.quizzes || []).some(q => q.score === q.total) },
+  { id: 'skill-1', icon: '👑', name: 'Primeiro Domínio', desc: 'Domine um conceito da árvore', test: s => (s.skillNodes || []).some(n => n.peak === 'mastered') },
+  { id: 'skill-5', icon: '🌳', name: 'Árvore Frondosa', desc: 'Domine 5 conceitos', test: s => (s.skillNodes || []).filter(n => n.peak === 'mastered').length >= 5 },
+  { id: 'skill-tree', icon: '🏆', name: 'Matéria Dominada', desc: 'Domine todos os conceitos de uma matéria (3 ou mais)', test: s => {
+    const bySub = {};
+    for (const n of s.skillNodes || []) (bySub[n.subject] ||= []).push(n);
+    return Object.values(bySub).some(ns => ns.length >= 3 && ns.every(n => n.peak === 'mastered'));
+  } },
   { id: 'night', icon: '🦉', name: 'Coruja', desc: 'Termine uma sessão depois das 23h', test: s => s.sessions.some(x => { const h = new Date(x.endedAt).getHours(); return h >= 23 || h < 4; }) },
 ];
 
@@ -352,6 +361,7 @@ const QUESTS = [
   { id: 'task1', icon: '✅', text: 'Conclua 1 tarefa', goal: 1, val: d => d.tasks, when: s => s.tasks.some(t => t.column !== doneColumn()) },
   { id: 'cards5', icon: '🃏', text: 'Revise 5 flashcards', goal: 5, val: d => d.reviews, when: s => s.cards.length >= 5 },
   { id: 'park1', icon: '💭', text: 'Use o 💭 em vez de pegar o celular', goal: 1, val: d => d.parked },
+  { id: 'skill1', icon: '🌳', text: 'Avance um conceito na árvore', goal: 1, val: d => d.skillUps, when: s => s.skillNodes.length > 0 },
   { id: 'quiz1', icon: '❓', text: 'Faça um quiz com a IA', goal: 1, val: d => d.quizzes, when: () => !!aiConfig().key },
 ];
 
@@ -375,6 +385,7 @@ function todayStats() {
     reviews: daily.reviews || 0,
     parked: daily.parked || 0,
     quizzes: daily.quizzes || 0,
+    skillUps: daily.skillUps || 0,
   };
 }
 
@@ -468,7 +479,15 @@ async function syncWakeLock() {
 const NEXT_DAYS = [1, 2, 4, 8, 16, 32];
 const CARD_RE = /^\s*(?:[-*]\s+)?(.+?)\s+::\s+(.+)$/;
 
+// Só refaz a lista quando alguma nota mudou (é chamada muitas vezes por tela).
+let cardsSig = '', cardsState = null;
 function syncCards() {
+  // "assinatura" barata das notas: quantidade + horários de edição + tamanho dos textos
+  let t = 0, len = 0;
+  for (const n of state.notes) { t += n.updatedAt || 0; len += (n.body || '').length; }
+  const sig = `${state.notes.length}:${t}:${len}`;
+  if (sig === cardsSig && cardsState === state) return;
+  cardsSig = sig; cardsState = state;
   const old = new Map(state.cards.map(c => [c.id, c]));
   const cards = [];
   for (const n of state.notes) {
@@ -493,6 +512,7 @@ function cardsDue() {
 function answerCard(c, correct) {
   c.seen = now();
   if (correct) {
+    c.correct = (c.correct ?? Math.max(0, c.box - 1)) + 1; // acertos (usado pelas árvores)
     c.due = addDaysISO(NEXT_DAYS[Math.min(c.box, NEXT_DAYS.length) - 1]);
     c.box = Math.min(c.box + 1, NEXT_DAYS.length);
   } else {
@@ -502,6 +522,7 @@ function answerCard(c, correct) {
   bump('reviews');
   ui.reviewed++;
   save();
+  checkSkills();
   checkQuests();
 }
 
@@ -889,6 +910,8 @@ function viewHome(el) {
 
     ${examsHTML()}
 
+    ${homeNextStepHTML()}
+
     ${quests.length ? `
     <section class="card">
       <div class="row between"><h3>📜 Missões de hoje</h3><span class="muted small">${p.questBonusDay === dayKey(now()) ? '✨ bônus recebido' : `+${CONFIG.xp.questBonus} XP ao completar`}</span></div>
@@ -966,7 +989,7 @@ function viewNotes(el) {
     .sort((a, b) => b.updatedAt - a.updatedAt);
 
   el.innerHTML = `
-    <div class="view-head"><h1>📝 Notas</h1><div class="row"><a class="btn" href="#/review" title="Revisar flashcards">🃏 ${cardsDue().length || ''}</a><button class="btn primary" id="newNote">+ Nova nota</button></div></div>
+    <div class="view-head"><h1>📝 Notas</h1><div class="row"><a class="btn" href="#/skills" title="Árvores de conhecimento" aria-label="Árvores de conhecimento">🌳</a><a class="btn" href="#/review" title="Revisar flashcards">🃏 ${cardsDue().length || ''}</a><button class="btn primary" id="newNote">+ Nova nota</button></div></div>
     <div class="chips">
       <button class="chip ${!ui.noteFolder ? 'on' : ''}" data-folder="">Todas</button>
       ${folders.map(f => `<button class="chip ${ui.noteFolder === f ? 'on' : ''}" data-folder="${esc(f)}">📁 ${esc(f)}</button>`).join('')}
@@ -1011,6 +1034,7 @@ function viewNote(el, id) {
       <input id="noteFolder" class="folder-input" list="folderList" placeholder="📁 Pasta / matéria" value="${esc(n.folder)}">
       <datalist id="folderList">${unique(state.notes.map(x => x.folder)).map(f => `<option value="${esc(f)}">`).join('')}</datalist>
       ${video ? `<a class="linked" href="#/videos/${video.id}">🎬 ${esc(video.title)}</a>` : ''}
+      ${nodeChipsFor({ noteId: n.id, videoId: n.videoId || '' })}
     </div>
     <div id="noteEditor"></div>
     ${backlinks.length ? `<section class="backlinks"><h4>🔗 Mencionada em</h4>${backlinks.map(b => `<a href="#/notes/${b.id}">${esc(b.title)}</a>`).join('')}</section>` : ''}`;
@@ -1051,7 +1075,7 @@ function viewVideos(el) {
   const doneCount = state.videos.filter(v => v.done).length;
 
   el.innerHTML = `
-    <div class="view-head"><h1>🎬 Aulas</h1><button class="btn primary" id="addVideo">+ Adicionar aula</button></div>
+    <div class="view-head"><h1>🎬 Aulas</h1><div class="row"><a class="btn" href="#/skills" title="Árvores de conhecimento" aria-label="Árvores de conhecimento">🌳</a><button class="btn primary" id="addVideo">+ Adicionar aula</button></div></div>
     ${state.videos.length ? `<p class="muted small">${doneCount} de ${state.videos.length} concluídas</p>` : `
       <div class="card empty">
         <p>Cole o link de uma videoaula do YouTube (ou de um arquivo .mp4 na internet).</p>
@@ -1193,6 +1217,7 @@ function viewVideo(el, id, startParam) {
         </div>
         <h1 class="video-title">${esc(v.title)}</h1>
         ${v.course ? `<p class="muted small">📚 ${esc(v.course)}</p>` : ''}
+        ${nodeChipsFor({ videoId: v.id })}
         ${location.protocol === 'file:' && v.kind === 'youtube' ? '<p class="warn-box">⚠️ O YouTube não toca quando o app é aberto direto do arquivo. Veja o README: rode com um servidor local ou publique no GitHub Pages.</p>' : ''}
       </div>
       <div class="player-wrap"><div id="player"></div></div>
@@ -1359,7 +1384,7 @@ function viewVideo(el, id, startParam) {
   el.querySelectorAll('[data-vai]').forEach(b => b.onclick = () => {
     const a = VIDEO_AI_ACTIONS.find(x => x.id === b.dataset.vai);
     if (a.quiz) {
-      startQuiz({ getContext: () => ed.text(), video: videoForAI(), title: `Quiz: ${v.title}`, videoId: v.id,
+      startQuiz({ getContext: () => ed.text(), video: videoForAI(), title: `Quiz: ${v.title}`, videoId: v.id, source: { videoId: v.id },
         seek: t => player?.seek(t), onMissed: html => { ed.appendHTML(html); showTab('note'); } });
     } else runVideoAI(a.prompt, a.heading, a.id);
   });
@@ -1635,9 +1660,16 @@ function viewFocus(el) {
 }
 
 /* ===== Revisão de flashcards ===== */
-function viewReview(el) {
-  const due = cardsDue();
-  const head = `<div class="view-head"><a href="#/notes" class="back">← Notas</a><span class="muted small">${due.length} para hoje · ${state.cards.length} no total</span></div>`;
+function viewReview(el, nodeId = '') {
+  // Com um conceito da árvore (#/review/<id>), mostra só os cards vencidos dele.
+  const node = nodeId && state.skillNodes.find(n => n.id === nodeId);
+  let due = cardsDue();
+  if (node) {
+    const ids = new Set(nodeResources(node, skillIndex()).cards.map(c => c.id));
+    due = due.filter(c => ids.has(c.id));
+  }
+  const back = node ? `<a href="#/skills/${encodeURIComponent(node.subject)}/${node.id}" class="back">← ${esc(node.icon)} ${esc(node.title)}</a>` : '<a href="#/notes" class="back">← Notas</a>';
+  const head = `<div class="view-head">${back}<span class="muted small">${due.length} para hoje${node ? ' neste conceito' : ` · ${state.cards.length} no total`}</span></div>`;
 
   if (!state.cards.length) {
     el.innerHTML = `${head}
@@ -1658,9 +1690,9 @@ function viewReview(el) {
     el.innerHTML = `${head}
       <div class="card empty">
         <p style="font-size:2.5rem;margin:0">🎉</p>
-        <h2>Tudo revisado por hoje!</h2>
+        <h2>${node ? 'Este conceito está em dia!' : 'Tudo revisado por hoje!'}</h2>
         <p class="muted">Próxima revisão: ${new Date(next + 'T00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' })}</p>
-        <a class="btn primary" href="#/home">Voltar ao início</a>
+        ${node ? `<a class="btn primary" href="#/skills/${encodeURIComponent(node.subject)}/${node.id}">Voltar ao conceito</a>` : '<a class="btn primary" href="#/home">Voltar ao início</a>'}
       </div>`;
     return;
   }
@@ -1859,6 +1891,7 @@ function route() {
   const { name, a, b } = currentRoute();
   const el = document.getElementById('view');
   if (location.hash !== lastPath) { window.scrollTo(0, 0); lastPath = location.hash; }
+  checkSkills(); // algum conceito subiu de estágio desde a última tela?
 
   switch (name) {
     case 'notes': a ? viewNote(el, a) : viewNotes(el); break;
@@ -1868,7 +1901,8 @@ function route() {
     case 'focus': viewFocus(el); break;
     case 'search': viewSearch(el, a || ''); break;
     case 'profile': viewProfile(el); break;
-    case 'review': viewReview(el); break;
+    case 'review': viewReview(el, a); break;
+    case 'skills': a ? (b ? viewSkillNode(el, a, b) : viewSkillTree(el, a)) : viewSkills(el); break;
     case 'wish': viewWish(el); break;
     default: viewHome(el);
   }
