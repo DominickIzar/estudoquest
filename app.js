@@ -16,6 +16,7 @@
      7. Roteador e inicialização
 
    Procure por "✏️ PERSONALIZE" para achar os pontos de customização.
+   O editor de notas fica em editor.js e o assistente de IA em ai.js.
    ===================================================================== */
 
 
@@ -86,7 +87,7 @@ const now = () => Date.now();
 function defaultState() {
   return {
     version: 1,
-    notes: [],    // { id, title, folder, body, videoId, createdAt, updatedAt }
+    notes: [],    // { id, title, folder, html, body (texto simples, para busca/flashcards), videoId, lesson, createdAt, updatedAt }
     videos: [],   // { id, title, course, url, kind, ytId, position, duration, watched, done, marks[], lastOpened }
     tasks: [],    // { id, title, description, due, tag, column, completedAt, createdAt }
     sessions: [], // { id, minutes, endedAt, taskId, intention, rating, star }  (só sessões de foco concluídas)
@@ -101,44 +102,27 @@ function defaultState() {
     },
     // ✏️ PERSONALIZE: tempos padrão do Pomodoro (em minutos). Também dá pra mudar na tela Perfil.
     // dailyGoal = meta mínima do dia (min). Pequena de propósito: o que cria o hábito é não falhar, não a quantidade.
-    settings: { focus: 25, shortBreak: 5, longBreak: 15, cycles: 4, sound: true, dailyGoal: 5, starMode: true },
+    settings: { focus: 25, shortBreak: 5, longBreak: 15, cycles: 4, sound: true, dailyGoal: 5, starMode: true, pauseOnMark: false },
     timer: { mode: 'focus', running: false, endsAt: null, remaining: 25 * 60, duration: 25 * 60, cycle: 0, taskId: '', intention: '', leftAt: null, fell: false, pendingRating: null },
   };
 }
 
 // Conteúdo de exemplo criado no primeiro uso.
+const SEED_HTML = `<h1>Bem-vindo(a) ao seu caderno! 🌙</h1>
+<p>Aqui você escreve como no Notion: é só digitar. Use a <b>barra de ferramentas</b> ali em cima, ou digite <b>/</b> numa linha vazia para escolher um bloco.</p>
+<h2>Experimente</h2>
+<ul class="todo"><li data-checked="true">Abrir o app</li><li>Fazer o primeiro Pomodoro</li><li>Colar um print aqui (Ctrl+V ou o botão 🖼️)</li></ul>
+<blockquote class="callout">💡 Digite <b>[[</b> para criar um link para outra nota, assim: <a class="wikilink" contenteditable="false" data-title="Minha primeira matéria">Minha primeira matéria</a></blockquote>
+<h2>Flashcards</h2>
+<p>Escreva a pergunta e a resposta separadas por <code>::</code> e elas viram cartões em 🃏 Revisar:</p>
+<p>Capital do Japão :: Tóquio</p>
+<p>Fórmula da velocidade média :: v = Δs / Δt</p>
+<p>Use #tags para achar tudo depois: #dica</p>
+<p>✨ O botão de brilho na barra chama o assistente de IA: ele resume, cria flashcards e tira dúvidas sobre a nota.</p>`;
+
 function seed(s) {
   const t = now();
-  s.notes.push({
-    id: uid(), seed: true, title: 'Comece aqui 👋', folder: 'Geral', videoId: null, createdAt: t, updatedAt: t,
-    body: [
-      '# Bem-vindo(a) ao seu caderno!',
-      'Aqui você escreve com atalhos simples (Markdown):',
-      '',
-      '## Formatação',
-      '- `# Título` e `## Subtítulo` no começo da linha',
-      '- **negrito** com dois asteriscos e *itálico* com um',
-      '- `- ` no começo vira item de lista',
-      '',
-      '## Lista de checagem (clique para marcar)',
-      '- [x] Abrir o app',
-      '- [ ] Fazer o primeiro Pomodoro',
-      '- [ ] Adicionar uma videoaula',
-      '',
-      '## Ligar notas e organizar',
-      'Escreva o nome de uma nota entre colchetes duplos, assim: [[Minha primeira matéria]].',
-      'Se ela ainda não existir, é criada quando você clicar.',
-      '',
-      'Use tags com hashtag para achar tudo depois: #dica #comece-aqui',
-      '',
-      '## Flashcards (revisão espaçada)',
-      'Escreva `pergunta :: resposta` numa linha e ela vira um cartão em 🃏 Revisar:',
-      '- Capital do Japão :: Tóquio',
-      '- Fórmula da velocidade média :: v = Δs / Δt',
-      '',
-      '> Toque em "✏️ Editar" lá em cima para ver como esta nota foi escrita.',
-    ].join('\n'),
-  });
+  s.notes.push({ id: uid(), seed: true, title: 'Comece aqui 👋', folder: 'Geral', videoId: null, createdAt: t, updatedAt: t, html: SEED_HTML, body: textOfHtml(SEED_HTML) });
   s.tasks.push(
     { id: uid(), title: 'Fazer meu primeiro Pomodoro', description: 'Vá na aba Foco e aperte Começar.', due: todayISO(), tag: 'Geral', column: 'todo', completedAt: null, createdAt: t },
     { id: uid(), title: 'Explorar o app', description: '', due: '', tag: 'Geral', column: 'doing', completedAt: null, createdAt: t },
@@ -160,8 +144,14 @@ function load() {
 // Garante que dados antigos/importados tenham todos os campos esperados.
 function normalize(s) {
   const d = defaultState();
+  // Notas antigas (em Markdown) viram o formato do editor novo.
+  const notes = (s.notes || []).map(n => {
+    if (n.html != null) return n;
+    const html = n.seed && n.title === 'Comece aqui 👋' ? SEED_HTML : mdToHtml(n.body || '', n);
+    return { ...n, html, body: textOfHtml(html) };
+  });
   return {
-    ...d, ...s,
+    ...d, ...s, notes,
     profile: { ...d.profile, ...s.profile },
     settings: { ...d.settings, ...s.settings },
     timer: { ...d.timer, ...s.timer },
@@ -802,48 +792,6 @@ function parseYouTubeId(url) {
   return m ? m[1] : null;
 }
 
-// Mini-Markdown: transforma o texto da nota em HTML.
-function renderMD(text, note) {
-  const codes = [];
-  const titles = new Set(state.notes.map(n => n.title.trim().toLowerCase())); // consulta rápida de [[links]]
-  const inline = s => {
-    s = s.replace(/`([^`]+)`/g, (_, c) => { codes.push(c); return `\u0000${codes.length - 1}\u0000`; });
-    s = s.replace(/^(.+?) :: (.+)$/, '<span class="qa">🃏 <strong>$1</strong><span class="qa-sep">⟶</span>$2</span>');
-    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    s = s.replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
-    s = s.replace(/\[\[([^\]]+)\]\]/g, (_, t) => {
-      const exists = titles.has(t.trim().toLowerCase());
-      return `<a class="wikilink ${exists ? '' : 'missing'}" href="#/note-title/${encodeURIComponent(t)}">${t}</a>`;
-    });
-    if (note && note.videoId) {
-      // [12:34] numa nota ligada a um vídeo → pula para aquele momento
-      s = s.replace(/\[(\d{1,2}:\d{2}(?::\d{2})?)\]/g, (_, c) =>
-        `<a class="timestamp" href="#/videos/${note.videoId}/${parseClock(c)}">▶ ${c}</a>`);
-    }
-    s = s.replace(/(^|\s)(https?:\/\/[^\s<]+)/g, '$1<a href="$2" target="_blank" rel="noopener">$2</a>');
-    s = s.replace(/(^|\s)#([\p{L}\p{N}_-]+)/gu, '$1<a class="tag" href="#/search/%23$2">#$2</a>');
-    return s.replace(/\u0000(\d+)\u0000/g, (_, i) => `<code>${codes[i]}</code>`);
-  };
-
-  let html = '', list = false;
-  const closeList = () => { if (list) { html += '</ul>'; list = false; } };
-  esc(text).split('\n').forEach((line, i) => {
-    let m;
-    if ((m = line.match(/^(#{1,3}) (.*)/))) { closeList(); html += `<h${m[1].length}>${inline(m[2])}</h${m[1].length}>`; }
-    else if ((m = line.match(/^[-*] \[( |x|X)\] (.*)/))) {
-      if (!list) { html += '<ul>'; list = true; }
-      const on = m[1] !== ' ';
-      html += `<li class="check ${on ? 'on' : ''}"><input type="checkbox" data-line="${i}" ${on ? 'checked' : ''}> <span>${inline(m[2])}</span></li>`;
-    }
-    else if ((m = line.match(/^[-*] (.*)/))) { if (!list) { html += '<ul>'; list = true; } html += `<li>${inline(m[1])}</li>`; }
-    else if ((m = line.match(/^&gt; ?(.*)/))) { closeList(); html += `<blockquote>${inline(m[1])}</blockquote>`; }
-    else if (!line.trim()) { closeList(); }
-    else { closeList(); html += `<p>${inline(line)}</p>`; }
-  });
-  closeList();
-  return html || '<p class="muted">Nota vazia. Toque em ✏️ Editar para escrever.</p>';
-}
-
 const findNoteByTitle = t => state.notes.find(n => n.title.trim().toLowerCase() === t.trim().toLowerCase());
 const tagsOf = n => unique([...(n.body || '').matchAll(/(?:^|\s)#([\p{L}\p{N}_-]+)/gu)].map(m => m[1].toLowerCase()));
 const snippet = (text, len = 90) => text.replace(/[#*`>\[\]]/g, '').replace(/\s+/g, ' ').trim().slice(0, len);
@@ -853,7 +801,7 @@ const snippet = (text, len = 90) => text.replace(/[#*`>\[\]]/g, '').replace(/\s+
    6. TELAS
    Cada função view*() desenha uma tela dentro de <main id="view">.
    --------------------------------------------------------------------- */
-const ui = { noteFolder: '', noteTag: '', noteMode: {}, reviewed: 0 }; // estado temporário da interface (não é salvo)
+const ui = { noteFolder: '', noteTag: '', reviewed: 0, videoTab: 'note', videoSticky: true }; // estado temporário da interface (não é salvo)
 
 /* ===== Início ===== */
 function viewHome(el) {
@@ -984,63 +932,51 @@ function viewNotes(el) {
 }
 
 function createNote(fields = {}) {
-  const n = { id: uid(), title: '', folder: '', body: '', videoId: null, createdAt: now(), updatedAt: now(), ...fields };
+  const n = { id: uid(), title: '', folder: '', html: '', body: '', videoId: null, createdAt: now(), updatedAt: now(), ...fields };
   state.notes.push(n);
-  ui.noteMode[n.id] = 'edit';
   save();
   addXP(CONFIG.xp.noteCreated, 'nota nova');
   return n;
 }
 
-/* ===== Notas: editor ===== */
+/* ===== Notas: editor (estilo Notion, ver editor.js) ===== */
 function viewNote(el, id) {
   const n = state.notes.find(x => x.id === id);
   if (!n) { el.innerHTML = '<p class="muted empty">Nota não encontrada. <a href="#/notes">Voltar</a></p>'; return; }
-  const mode = ui.noteMode[id] || 'preview';
   const video = n.videoId && state.videos.find(v => v.id === n.videoId);
   const backlinks = n.title ? state.notes.filter(o => o.id !== n.id && o.body.toLowerCase().includes(`[[${n.title.toLowerCase()}]]`)) : [];
 
   el.innerHTML = `
     <div class="view-head">
       <a href="#/notes" class="back">← Notas</a>
-      <div class="row">
-        <button class="btn" id="toggleMode">${mode === 'edit' ? '👁 Visualizar' : '✏️ Editar'}</button>
-        <button class="btn danger ghost" id="delNote" title="Excluir nota">🗑</button>
-      </div>
+      <button class="btn danger ghost" id="delNote" title="Excluir nota">🗑</button>
     </div>
-    <input id="noteTitle" class="title-input" placeholder="Título da nota" value="${esc(n.title)}">
-    <div class="row">
+    <input id="noteTitle" class="title-input" placeholder="Sem título" value="${esc(n.title)}">
+    <div class="note-meta">
       <input id="noteFolder" class="folder-input" list="folderList" placeholder="📁 Pasta / matéria" value="${esc(n.folder)}">
       <datalist id="folderList">${unique(state.notes.map(x => x.folder)).map(f => `<option value="${esc(f)}">`).join('')}</datalist>
+      ${video ? `<a class="linked" href="#/videos/${video.id}">🎬 ${esc(video.title)}</a>` : ''}
     </div>
-    ${video ? `<a class="linked" href="#/videos/${video.id}">🎬 Ligada à aula: <strong>${esc(video.title)}</strong></a>` : ''}
-    ${mode === 'edit'
-      ? `<textarea id="noteBody" class="note-body" placeholder="Escreva aqui… use # títulos, - listas, - [ ] tarefas, [[Outra nota]] e #tags">${esc(n.body)}</textarea>
-         <p class="hint">Salva sozinho enquanto você digita.</p>`
-      : `<article class="md" id="md">${renderMD(n.body, n)}</article>`}
+    <div id="noteEditor"></div>
     ${backlinks.length ? `<section class="backlinks"><h4>🔗 Mencionada em</h4>${backlinks.map(b => `<a href="#/notes/${b.id}">${esc(b.title)}</a>`).join('')}</section>` : ''}`;
 
   const touch = () => { n.updatedAt = now(); saveSoon(); };
-  el.querySelector('#noteTitle').oninput = e => { n.title = e.target.value; touch(); };
+  const ed = createEditor(el.querySelector('#noteEditor'), {
+    html: n.html,
+    videoId: n.videoId || '',
+    onChange: (html, text) => { n.html = html; n.body = text; touch(); },
+    onAI: () => openNoteAI(n, ed),
+  });
+  const title = el.querySelector('#noteTitle');
+  title.oninput = () => { n.title = title.value; touch(); };
+  title.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); ed.root.focus(); } };
   el.querySelector('#noteFolder').oninput = e => { n.folder = e.target.value.trim(); touch(); };
-  el.querySelector('#toggleMode').onclick = () => { save(); ui.noteMode[id] = mode === 'edit' ? 'preview' : 'edit'; route(); };
   el.querySelector('#delNote').onclick = () => {
     if (!confirm('Excluir esta nota?')) return;
     state.notes = state.notes.filter(x => x.id !== id);
     save(); location.hash = '#/notes';
   };
-  const body = el.querySelector('#noteBody');
-  if (body) {
-    body.oninput = () => { n.body = body.value; touch(); };
-    if (!n.title) el.querySelector('#noteTitle').focus(); else body.focus();
-  }
-  // Clicar numa caixinha [ ] marca/desmarca direto no texto da nota.
-  el.querySelectorAll('#md input[type=checkbox]').forEach(cb => cb.onchange = () => {
-    const lines = n.body.split('\n');
-    const i = Number(cb.dataset.line);
-    lines[i] = lines[i].replace(/\[( |x|X)\]/, cb.checked ? '[x]' : '[ ]');
-    n.body = lines.join('\n'); n.updatedAt = now(); save(); route();
-  });
+  if (!n.title) title.focus();
 }
 
 // [[Título]] clicado: abre a nota ou cria se não existir.
@@ -1170,6 +1106,7 @@ async function mountPlayer(v, startAt, token) {
 }
 
 function cleanupView() {
+  flushEditors();             // salva o que estava sendo digitado
   if (videoTick) videoTick(); // salva a posição final antes de sair
   clearInterval(pollTimer);
   if (player) { try { player.destroy(); } catch (e) { /* ok */ } }
@@ -1186,51 +1123,104 @@ function viewVideo(el, id, startParam) {
   if (!v) { el.innerHTML = '<p class="muted empty">Aula não encontrada. <a href="#/videos">Voltar</a></p>'; return; }
   v.lastOpened = now(); save();
   const startAt = startParam != null ? Number(startParam) : (v.done ? 0 : v.position || 0);
-  const notes = state.notes.filter(n => n.videoId === v.id);
+  // A "nota da aula" é criada só quando você escreve a primeira coisa.
+  let lesson = state.notes.find(n => n.videoId === v.id && (n.lesson || n.exportOf === v.id));
+  const otherNotes = state.notes.filter(n => n.videoId === v.id && n !== lesson);
+  const tab = ui.videoTab;
   let markTime = startAt;
 
   el.innerHTML = `
-    <div class="view-head">
-      <a href="#/videos" class="back">← Aulas</a>
-      <button class="btn ghost" id="editVideo">⚙️ Editar</button>
-    </div>
-    <h1 class="video-title">${esc(v.title)}</h1>
-    ${v.course ? `<p class="muted small">📚 ${esc(v.course)}</p>` : ''}
-    ${location.protocol === 'file:' && v.kind === 'youtube' ? '<p class="warn-box">⚠️ O YouTube não toca quando o app é aberto direto do arquivo. Veja o README: rode com um servidor local ou publique no GitHub Pages.</p>' : ''}
-    <div class="player-wrap"><div id="player"></div></div>
-    <div class="row progress-line">
-      <div class="bar grow"><i id="vbar" style="width:${videoPct(v)}%"></i></div>
-      <span id="vpct" class="small">${videoPct(v)}%</span>
-      <button class="btn small-btn" id="toggleDone">${v.done ? '↺ Desmarcar' : '✓ Concluída'}</button>
-    </div>
+    <div class="video-page ${ui.videoSticky ? 'sticky-player' : ''}">
+      <div class="vp-head">
+        <div class="view-head">
+          <a href="#/videos" class="back">← Aulas</a>
+          <button class="btn ghost" id="editVideo">⚙️ Editar</button>
+        </div>
+        <h1 class="video-title">${esc(v.title)}</h1>
+        ${v.course ? `<p class="muted small">📚 ${esc(v.course)}</p>` : ''}
+        ${location.protocol === 'file:' && v.kind === 'youtube' ? '<p class="warn-box">⚠️ O YouTube não toca quando o app é aberto direto do arquivo. Veja o README: rode com um servidor local ou publique no GitHub Pages.</p>' : ''}
+      </div>
+      <div class="player-wrap"><div id="player"></div></div>
+      <div class="vp-side">
+        <div class="row progress-line">
+          <div class="bar grow"><i id="vbar" style="width:${videoPct(v)}%"></i></div>
+          <span id="vpct" class="small">${videoPct(v)}%</span>
+          <button class="btn small-btn" id="toggleDone">${v.done ? '↺ Desmarcar' : '✓ Concluída'}</button>
+          <button class="btn small-btn ${ui.videoSticky ? 'on' : ''}" id="pinVideo" title="Deixar o vídeo fixo no topo enquanto você rola e escreve">📌</button>
+        </div>
+        <div class="tabs" role="tablist">
+          <button class="tab ${tab === 'note' ? 'on' : ''}" data-tab="note">📝 Anotações</button>
+          <button class="tab ${tab === 'marks' ? 'on' : ''}" data-tab="marks">⏱ Marcações <span class="count" id="marksCount">${v.marks.length}</span></button>
+        </div>
 
-    <form id="markForm" class="mark-form">
-      <button type="button" class="pill time-pill" id="markTimeBtn" title="Usar o tempo atual do vídeo">⏱ <span>${fmtClock(markTime)}</span></button>
-      <input id="markText" placeholder="Anotar neste momento… (o vídeo pausa)" autocomplete="off">
-      <button class="btn primary">Salvar</button>
-    </form>
-    <ul class="marks" id="marks"></ul>
+        <div class="tab-panel" data-panel="note" ${tab === 'note' ? '' : 'hidden'}>
+          <p class="hint">Escreva enquanto assiste: o vídeo continua tocando. O botão ⏱ coloca o momento atual do vídeo no texto.</p>
+          <div id="lessonEditor"></div>
+          <a class="small" id="openLesson" href="${lesson ? `#/notes/${lesson.id}` : '#'}" ${lesson ? '' : 'hidden'}>Abrir como nota em tela cheia →</a>
+        </div>
 
-    <div class="row wrap">
-      <button class="btn" id="exportMarks" ${v.marks.length ? '' : 'disabled'}>📝 Transformar anotações em nota</button>
-      <button class="btn ghost" id="newLinkedNote">+ Nota livre desta aula</button>
-    </div>
-    ${notes.length ? `<section class="backlinks"><h4>Notas desta aula</h4>${notes.map(n => `<a href="#/notes/${n.id}">${esc(n.title)}</a>`).join('')}</section>` : ''}`;
+        <div class="tab-panel" data-panel="marks" ${tab === 'marks' ? '' : 'hidden'}>
+          <form id="markForm" class="mark-form">
+            <button type="button" class="pill time-pill" id="markTimeBtn" title="Usar o tempo atual do vídeo">⏱ <span>${fmtClock(markTime)}</span></button>
+            <input id="markText" placeholder="Marcar este momento…" autocomplete="off">
+            <button class="btn primary">Salvar</button>
+          </form>
+          <label class="switch small"><input type="checkbox" id="pauseOnMark" ${state.settings.pauseOnMark ? 'checked' : ''}> Pausar o vídeo enquanto escrevo uma marcação</label>
+          <ul class="marks" id="marks"></ul>
+          <button class="btn" id="exportMarks">📝 Copiar marcações para as anotações</button>
+        </div>
+        ${otherNotes.length ? `<section class="backlinks"><h4>Outras notas desta aula</h4>${otherNotes.map(n => `<a href="#/notes/${n.id}">${esc(n.title || 'Sem título')}</a>`).join('')}</section>` : ''}
+      </div>
+    </div>`;
 
+  // --- Anotações livres da aula (editor completo, sem pausar o vídeo)
+  const ensureLesson = () => {
+    if (!lesson) {
+      lesson = createNote({ title: `📝 ${v.title}`, folder: v.course, videoId: v.id, lesson: true });
+      const link = el.querySelector('#openLesson');
+      link.href = `#/notes/${lesson.id}`; link.hidden = false;
+    }
+    return lesson;
+  };
+  const ed = createEditor(el.querySelector('#lessonEditor'), {
+    html: lesson?.html || '',
+    getPlayer: () => player,
+    videoId: v.id,
+    placeholder: 'Anote enquanto assiste… ⏱ insere o tempo do vídeo',
+    onChange: (html, text) => { const n = ensureLesson(); n.html = html; n.body = text; n.updatedAt = now(); saveSoon(); },
+    onAI: () => openNoteAI(ensureLesson(), ed),
+  });
+
+  // --- Abas e vídeo fixo (sem recarregar a página, para o vídeo não parar)
+  const showTab = name => {
+    ui.videoTab = name;
+    el.querySelectorAll('[data-tab]').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+    el.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== name; });
+  };
+  el.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+  el.querySelector('#pinVideo').onclick = e => {
+    ui.videoSticky = !ui.videoSticky;
+    el.querySelector('.video-page').classList.toggle('sticky-player', ui.videoSticky);
+    e.currentTarget.classList.toggle('on', ui.videoSticky);
+  };
+
+  // --- Marcações rápidas (lista de momentos)
   const renderMarks = () => {
     const ul = el.querySelector('#marks');
     ul.innerHTML = [...v.marks].sort((a, b) => a.t - b.t).map(m => `
       <li><button class="time" data-seek="${m.t}">▶ ${fmtClock(m.t)}</button><span class="grow">${esc(m.text)}</span><button class="x" data-del="${m.id}" title="Apagar">×</button></li>`).join('')
-      || '<li class="muted small">Suas anotações com tempo aparecem aqui. Clique no tempo para voltar àquele trecho.</li>';
+      || '<li class="muted small">Marque momentos importantes para voltar depois. Toque no tempo para pular até ele.</li>';
     ul.querySelectorAll('[data-seek]').forEach(b => b.onclick = () => player?.seek(Number(b.dataset.seek)));
     ul.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { v.marks = v.marks.filter(m => m.id !== b.dataset.del); save(); renderMarks(); });
-    el.querySelector('#exportMarks').disabled = !v.marks.length;
+    el.querySelector('#exportMarks').disabled = !v.marks.some(m => !m.exported);
+    el.querySelector('#marksCount').textContent = v.marks.length;
   };
   renderMarks();
 
   const setMarkTime = () => { markTime = Math.floor(player?.time() || 0); el.querySelector('#markTimeBtn span').textContent = fmtClock(markTime); };
   const markText = el.querySelector('#markText');
-  markText.onfocus = () => { setMarkTime(); player?.pause(); };   // captura o segundo exato e pausa
+  markText.onfocus = () => { setMarkTime(); if (state.settings.pauseOnMark) player?.pause(); };
+  el.querySelector('#pauseOnMark').onchange = e => { state.settings.pauseOnMark = e.target.checked; save(); };
   el.querySelector('#markTimeBtn').onclick = setMarkTime;
   el.querySelector('#markForm').onsubmit = e => {
     e.preventDefault();
@@ -1239,33 +1229,26 @@ function viewVideo(el, id, startParam) {
     v.marks.push({ id: uid(), t: markTime, text, createdAt: now() });
     markText.value = '';
     save(); renderMarks();
-    toast(`Anotado em ${fmtClock(markTime)} ✍️`);
+    toast(`Marcado em ${fmtClock(markTime)} ✍️`);
     checkQuests();
   };
+  // Copia as marcações (ainda não copiadas) para as anotações, com tempos clicáveis.
+  el.querySelector('#exportMarks').onclick = () => {
+    const marks = [...v.marks].sort((a, b) => a.t - b.t).filter(m => !m.exported);
+    if (!marks.length) return;
+    ed.appendHTML(`<ul>${marks.map(m => `<li>${tsChip(m.t, v.id)} ${esc(m.text)}</li>`).join('')}</ul>`);
+    marks.forEach(m => { m.exported = true; });
+    save(); renderMarks(); showTab('note');
+  };
 
-  el.querySelector('#toggleDone').onclick = () => {
-    if (v.done) { v.done = false; } else { completeVideo(v); }
-    save(); route();
+  el.querySelector('#toggleDone').onclick = e => {
+    if (v.done) v.done = false; else completeVideo(v);
+    save();
+    e.currentTarget.textContent = v.done ? '↺ Desmarcar' : '✓ Concluída';
+    el.querySelector('#vbar').style.width = `${videoPct(v)}%`;
+    el.querySelector('#vpct').textContent = `${videoPct(v)}%`;
   };
   el.querySelector('#editVideo').onclick = () => videoDialog(v);
-  el.querySelector('#newLinkedNote').onclick = () => {
-    const n = createNote({ title: `Resumo — ${v.title}`, folder: v.course, videoId: v.id });
-    location.hash = `#/notes/${n.id}`;
-  };
-  // Junta as anotações com tempo numa nota. Os [mm:ss] viram links que voltam pro vídeo.
-  el.querySelector('#exportMarks').onclick = () => {
-    let n = state.notes.find(x => x.exportOf === v.id);
-    const lines = [...v.marks].sort((a, b) => a.t - b.t).map(m => `- [${fmtClock(m.t)}] ${m.text}`);
-    if (!n) {
-      n = createNote({ title: `Anotações — ${v.title}`, folder: v.course, videoId: v.id, exportOf: v.id, body: `# ${v.title}\n\n` });
-    }
-    const missing = lines.filter(l => !n.body.includes(l));
-    n.body = n.body.replace(/\s*$/, '\n') + missing.join('\n');
-    n.updatedAt = now();
-    ui.noteMode[n.id] = 'preview';
-    save();
-    location.hash = `#/notes/${n.id}`;
-  };
 
   // Acompanha o progresso a cada 2 segundos.
   const token = viewToken;
@@ -1633,6 +1616,16 @@ function viewProfile(el) {
     </section>
 
     <section class="card">
+      <h3>✨ Assistente IA (grátis)</h3>
+      <p class="muted small">Resume notas, cria flashcards e quizzes e tira dúvidas. Usa o Gemini, do Google, que tem plano gratuito:
+        crie uma chave em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> e cole abaixo.
+        A chave fica só neste aparelho e não vai no backup. No plano grátis, o Google pode usar o que você envia para melhorar os produtos dele.</p>
+      <label>Chave da API<input type="password" id="aiKey" autocomplete="off" placeholder="AIza…" value="${esc(aiConfig().key || '')}"></label>
+      <label>Modelo<select id="aiModel">${AI_MODELS.map(m => `<option value="${m.id}" ${aiConfig().model === m.id ? 'selected' : ''}>${esc(m.label)}</option>`).join('')}</select></label>
+      <div class="row wrap"><button class="btn" id="aiTest">Testar</button><span class="small muted" id="aiStatus"></span></div>
+    </section>
+
+    <section class="card">
       <h3>💾 Backup</h3>
       <p class="muted small">Seus dados ficam só neste aparelho/navegador. Exporte de vez em quando e guarde o arquivo (Google Drive, e-mail…). Para usar em outro aparelho, importe lá.</p>
       <div class="row wrap">
@@ -1652,8 +1645,21 @@ function viewProfile(el) {
     if (inp.dataset.set !== 'dailyGoal' && !t.running && t.remaining === t.duration) timerSetMode(t.mode); // aplica o novo tempo
     save();
   });
-  el.querySelector('#exportBtn').onclick = () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const saveAI = () => aiSaveConfig({ ...aiConfig(), key: el.querySelector('#aiKey').value.trim(), model: el.querySelector('#aiModel').value });
+  el.querySelector('#aiKey').onchange = saveAI;
+  el.querySelector('#aiModel').onchange = saveAI;
+  el.querySelector('#aiTest').onclick = async () => {
+    saveAI();
+    const status = el.querySelector('#aiStatus');
+    status.textContent = 'Testando…';
+    try { await askAI('Responda só: ok', 'teste'); status.textContent = '✅ Funcionando!'; }
+    catch (err) { status.textContent = `⚠️ ${err.message}`; }
+  };
+  el.querySelector('#exportBtn').onclick = async () => {
+    // As imagens das notas vão junto no arquivo (convertidas em texto).
+    const images = {};
+    try { for (const k of await imgKeys()) images[k] = await blobToDataURL(await imgGet(k)); } catch (e) { /* sem imagens */ }
+    const blob = new Blob([JSON.stringify({ ...state, images }, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `estudoquest-backup-${todayISO()}.json`;
@@ -1667,7 +1673,9 @@ function viewProfile(el) {
       const data = JSON.parse(await file.text());
       if (!Array.isArray(data.notes) || !Array.isArray(data.tasks)) throw new Error('formato');
       if (!confirm('Importar vai SUBSTITUIR os dados atuais por os do arquivo. Continuar?')) return;
-      state = normalize(data); save(); toast('Backup importado ✅'); route(); updateHeader();
+      const { images = {}, ...rest } = data;
+      for (const [k, url] of Object.entries(images)) await imgPut(k, await dataURLToBlob(url));
+      state = normalize(rest); save(); toast('Backup importado ✅'); route(); updateHeader();
     } catch (err) { alert('Esse arquivo não parece um backup do EstudoQuest.'); }
   };
   el.querySelector('#resetBtn').onclick = () => {
@@ -1736,6 +1744,7 @@ window.addEventListener('hashchange', route);
 document.addEventListener('visibilitychange', () => {
   const t = state.timer;
   if (document.hidden) {
+    flushEditors();
     if (videoTick) videoTick();
     if (t.running && t.mode === 'focus' && state.settings.starMode && !t.leftAt) t.leftAt = now();
     flushSave();
@@ -1761,3 +1770,4 @@ applyShields();
 save();
 route();
 scheduleTick(); // retoma um timer que estava rodando quando o app foi fechado
+setTimeout(cleanupImages, 5000); // faxina de imagens apagadas, sem atrasar a abertura

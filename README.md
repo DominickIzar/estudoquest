@@ -3,7 +3,7 @@
 Um app de estudos que junta num só lugar **caderno de notas**, **videoaulas com progresso**, **quadro de tarefas** e **timer Pomodoro**, com uma camada de jogo opcional (XP, níveis, conquistas e uma coleção que cresce).
 
 <p>
-<img src="docs/telas/0-inicio.png" width="180"> <img src="docs/telas/9-imersao.png" width="180"> <img src="docs/telas/3-aula.png" width="180"> <img src="docs/telas/4-tarefas.png" width="180"> <img src="docs/telas/7-perfil.png" width="180">
+<img src="docs/telas/0-inicio.png" width="180"> <img src="docs/telas/9-imersao.png" width="180"> <img src="docs/telas/15-aula-anotacoes.png" width="180"> <img src="docs/telas/4-tarefas.png" width="180"> <img src="docs/telas/7-perfil.png" width="180">
 </p>
 
 ---
@@ -40,12 +40,15 @@ Um app de estudos que junta num só lugar **caderno de notas**, **videoaulas com
 | `index.html` | O "esqueleto": barra do topo, menu de baixo e o espaço onde as telas aparecem |
 | `style.css` | Cores e aparência. As cores ficam no topo do arquivo, fáceis de trocar |
 | `app.js` | Toda a lógica, dividida em 7 seções numeradas |
+| `editor.js` | O editor de notas estilo Notion (barra de formatação, menu "/", links, imagens) |
+| `ai.js` | O assistente de IA (Gemini, plano grátis) |
 | `sw.js` + `manifest.webmanifest` + `icon.svg` | O que faz o app ser instalável e abrir offline |
 
 **Por que sem React, Vue etc.?** Para você conseguir manter sozinho: não há nada para instalar, compilar ou atualizar. Você edita um arquivo, recarrega a página e vê a mudança.
 
 ### Onde os dados ficam: **no próprio aparelho (localStorage)**
 O navegador tem um "cofrinho" onde o app guarda tudo. Vantagens: grátis, instantâneo, funciona offline e não precisa de conta.
+As **imagens** das notas ficam num armazenamento maior do navegador (IndexedDB), já reduzidas para ocupar pouco espaço (um print vira uns 100–300 KB).
 **Cuidado:** os dados ficam só naquele aparelho e naquele navegador. Por isso existe **Perfil → Exportar dados** (gera um arquivo `.json` de backup) e **Importar** (para restaurar ou levar para outro aparelho). Sincronização automática fica para a v2.
 
 ### Vídeos: **YouTube (player oficial) ou link direto de .mp4**
@@ -56,8 +59,8 @@ O player oficial do YouTube permite ler "em que segundo o vídeo está", e é is
 ## 3. O que está na v1 (MVP) e o que fica para depois
 
 ### ✅ v1: o que já funciona
-- **Notas**: escrever em Markdown simples, ver formatado, **links entre notas** com `[[Título]]` (cria a nota se não existir), seção "Mencionada em" (backlinks), **pastas** (matéria) e **#tags** clicáveis, listas de checagem clicáveis e salvamento automático.
-- **Videoaulas**: adicionar por link, organizar por curso, **retomar de onde parou**, barra de progresso por aula e por curso, conclusão automática aos 90%, **anotações no segundo exato** (o vídeo pausa quando você começa a digitar), clicar no tempo para voltar ao trecho e **transformar as anotações em uma nota** cujos `[mm:ss]` continuam clicáveis.
+- **Notas (v1.3, estilo Notion)**: veja a seção [Editor de notas, aulas e IA](#-editor-de-notas-aulas-e-ia-v13). Sem Markdown: barra de formatação, menu `/`, links `[[`, prints, pastas, #tags, "Mencionada em" e salvamento automático.
+- **Videoaulas**: adicionar por link, organizar por curso, **retomar de onde parou**, barra de progresso por aula e por curso, conclusão automática aos 90%, **anotações livres enquanto o vídeo toca** (com tempos clicáveis) e **marcações rápidas** de momentos.
 - **Tarefas**: quadro com colunas *A fazer / Em andamento / Concluído*, prazo com aviso de "hoje"/"atrasada", matéria, arrastar e soltar no computador e botões ◀ ▶ no celular.
 - **Foco**: Pomodoro (foco, pausa curta, pausa longa), botão **"Só 5 minutinhos"** para vencer a preguiça de começar, vincular a sessão a uma tarefa, som e notificação ao terminar. O timer continua certo mesmo se você trocar de tela.
 - **Busca única** no topo: procura em notas, aulas (inclusive nas anotações com tempo) e tarefas.
@@ -70,10 +73,11 @@ O player oficial do YouTube permite ler "em que segundo o vídeo está", e é is
 2. **Lembrete diário no horário do seu plano**, mesmo com o app fechado. Precisa de um serviço de notificações; dá pra começar grátis com o [ntfy](https://ntfy.sh).
 3. **Revisão semanal** no domingo: resumo da semana, melhores horários (a partir das avaliações 😀😐😞) e meta da próxima semana.
 4. **Estudo em grupo** estilo Focusmate/YPT: ver amigos focando ao mesmo tempo. Precisa de servidor.
-5. **Editor por blocos estilo Notion** (arrastar blocos, inserir imagens).
-6. **Lembretes de prazo** por notificação e **calendário** das tarefas.
-7. Renomear uma nota atualizando os `[[links]]` nas outras automaticamente.
-8. Coleção com imagens próprias em vez de emojis, constelações com nome no céu e temas desbloqueáveis.
+5. **Editor**: arrastar blocos para reordenar, tabelas, blocos recolhíveis e redimensionar imagens.
+6. **IA**: perguntar sobre *todas* as notas de uma matéria, e enviar os prints junto (o Gemini entende imagens).
+7. **Lembretes de prazo** por notificação e **calendário** das tarefas.
+8. Renomear uma nota atualizando os `[[links]]` nas outras automaticamente.
+9. Coleção com imagens próprias em vez de emojis, constelações com nome no céu e temas desbloqueáveis.
 
 ---
 
@@ -82,7 +86,10 @@ O player oficial do YouTube permite ler "em que segundo o vídeo está", e é is
 Tudo fica num único objeto (`state`) salvo como texto no navegador. São quatro "tipos" principais, mais o perfil:
 
 ```
-Nota          { id, title, folder, body, videoId?, createdAt, updatedAt }
+Nota          { id, title, folder, html (o que o editor mostra),
+                body (o mesmo em texto simples: busca, tags, links, flashcards),
+                videoId?, lesson? (é a nota da aula), createdAt, updatedAt }
+Imagem        guardada no IndexedDB com um id; a nota guarda <img data-img="id">
 Videoaula     { id, title, course, url, kind: 'youtube'|'file', ytId,
                 position, duration, watched, done, lastOpened,
                 marks: [ { id, t (segundos), text, createdAt } ] }
@@ -107,8 +114,8 @@ erDiagram
     NOTA ||--o{ FLASHCARD : "linhas pergunta :: resposta"
 ```
 
-- Uma **nota** pode apontar para uma **videoaula** (`videoId`). Aí os `[12:34]` dentro dela viram links que abrem o vídeo naquele segundo.
-- As **notas se ligam entre si** pelo texto `[[Título]]`, sem tabela extra. O app procura essas menções para montar o "Mencionada em".
+- Uma **nota** pode apontar para uma **videoaula** (`videoId`). Cada aula tem uma "nota da aula" (`lesson`), criada quando você escreve a primeira coisa. Os tempos ▶ 12:34 dentro dela abrem o vídeo naquele segundo.
+- As **notas se ligam entre si** por links `[[Título]]` (no texto simples) / chips ↗ (no editor), sem tabela extra. O app procura essas menções para montar o "Mencionada em".
 - **Pasta** (nota), **curso** (vídeo) e **matéria** (tarefa) são campos de texto livre que se sugerem entre si. Assim "Física" aparece igual nos três.
 - Uma **sessão de foco** pode registrar para qual **tarefa** você estava estudando.
 - Os **flashcards** saem das notas: o app lê as linhas `pergunta :: resposta` e guarda só o progresso de cada uma (caixa e próxima data).
@@ -125,12 +132,14 @@ Navegação: **menu fixo embaixo** (Início · Notas · Aulas · Tarefas · Foco
 ```
 Notas ─► [+ Nova nota] ─► digita título, pasta e texto (salva sozinho)
                                │
-                               ├─ escreve [[Outra nota]] ─► clica ─► abre/cria a nota
-                               ├─ escreve #prova ─► clica ─► busca tudo com #prova
-                               └─ [👁 Visualizar] ─► vê formatado e marca as [ ] caixinhas
+                               ├─ barra: H1 H2 B I U S 🖍️ • 1. ☑ 💡 🖼️ 🔗
+                               ├─ digita / ─► menu de blocos (título, lista, citação, imagem…)
+                               ├─ digita [[ ─► escolhe ou cria a nota ─► chip ↗ clicável
+                               ├─ Ctrl+V num print ─► imagem na nota
+                               └─ ✨ ─► resumir, flashcards, quiz, perguntar
 Lista de notas: filtrar por 📁 pasta e por #tag
 ```
-<img src="docs/telas/1-notas.png" width="220"> <img src="docs/telas/2-nota.png" width="220">
+<img src="docs/telas/1-notas.png" width="220"> <img src="docs/telas/12-menu-barra.png" width="220"> <img src="docs/telas/13-nota-editor.png" width="220">
 
 ### 🎬 Assistir e acompanhar videoaulas
 ```
@@ -138,13 +147,14 @@ Aulas ─► [+ Adicionar aula] ─► cola link do YouTube + curso
   │
   └─► abre a aula ─► vídeo começa de onde você parou
          │
-         ├─ toca no campo "Anotar neste momento" ─► vídeo PAUSA e guarda o segundo
-         │     └─ digita e Enter ─► anotação [mm:ss] aparece na lista
+         ├─ aba 📝 Anotações: escreve à vontade, o vídeo CONTINUA tocando
+         │     └─ botão ⏱ ─► insere ▶ 12:34 (o tempo atual) no texto
+         ├─ aba ⏱ Marcações: marca momentos rápidos (pausar é opcional)
          ├─ clica em ▶ 12:34 ─► vídeo pula para aquele trecho
-         ├─ passou de 90% ─► ✓ concluída (+20 XP)
-         └─ [📝 Transformar anotações em nota] ─► vira nota com links de tempo
+         ├─ 📌 ─► vídeo fixo no topo enquanto você rola e escreve
+         └─ passou de 90% ─► ✓ concluída (+20 XP)
 ```
-<img src="docs/telas/3-aula.png" width="220">
+<img src="docs/telas/15-aula-anotacoes.png" width="220">
 
 ### ✅ Gerenciar tarefas
 ```
@@ -189,6 +199,36 @@ Cada uma foi inspirada num app que funciona para muita gente e adaptada para est
 
 ---
 
+## ✍️ Editor de notas, aulas e IA (v1.3)
+
+### Editor estilo Notion (sem Markdown)
+- **Barra de ferramentas** fixa no topo da nota: ✨ IA, títulos (H1/H2), **negrito**, *itálico*, sublinhado, riscado, 🖍️ marca-texto, listas (•, 1., ☑ tarefas), 💡 destaque, 🖼️ imagem, 🔗 link para nota, `/` mais blocos, desfazer/refazer.
+- **Menu `/`**: numa linha, digite `/` e escolha o bloco. Dá para filtrar digitando, por exemplo `/tare` para lista de tarefas.
+- **Links entre notas**: digite `[[` e escolha a nota (ou crie uma nova). Vira um chip ↗ que abre a nota.
+- **Prints e imagens**: cole com **Ctrl+V** (no computador: `Win+Shift+S` ou `Cmd+Shift+4` para tirar o print, depois Ctrl+V), arraste o arquivo ou use 🖼️, que no celular abre a galeria ou a câmera.
+- **Atalhos opcionais** para quem já conhece: `# ` vira título, `- ` vira lista, `[] ` vira caixinha, `> ` vira citação, `--- ` vira divisor.
+- **Flashcards** continuam iguais: uma linha `pergunta :: resposta` vira cartão em 🃏 Revisar.
+- Notas antigas, escritas em Markdown, foram convertidas automaticamente.
+
+### Anotar enquanto assiste
+Na página da aula há duas abas:
+- **📝 Anotações**: um editor completo (o mesmo das notas) **sem pausar o vídeo**. O botão **⏱** coloca o momento atual do vídeo no texto como ▶ 12:34; tocar nele volta o vídeo para aquele ponto. O 📌 deixa o vídeo fixo no topo enquanto você rola. No computador, vídeo e anotações ficam lado a lado.
+- **⏱ Marcações**: marcações rápidas de momentos. Pausar ao digitar agora é opcional e vem desligado. O botão "Copiar marcações para as anotações" leva todas para a aba 📝.
+
+### ✨ Assistente de IA (grátis)
+Usa o **Gemini**, do Google, que tem plano gratuito. O Claude não tem plano grátis, por isso não foi usado aqui.
+1. Abra **[aistudio.google.com/apikey](https://aistudio.google.com/apikey)**, entre com sua conta Google e toque em **Create API key**.
+2. No app, toque em ✨ em qualquer nota e cole a chave (ou vá em Perfil → Assistente IA).
+3. Use **Resumir**, **Criar flashcards** (eles entram direto na sua revisão 🃏), **Fazer um quiz**, **Explicar simples** ou faça uma pergunta. **Inserir na nota** coloca a resposta no fim da nota.
+
+Limites grátis aproximados (o Google muda de tempos em tempos; confira em AI Studio → Rate limits): **Gemini 3.5 Flash-Lite**, o padrão, faz ~500 pedidos por dia. O **Gemini Flash** é mais caprichado, mas faz só ~20 por dia. Dá para trocar em Perfil.
+
+**Privacidade:** a chave fica só no aparelho e **não vai no backup**. O texto da nota é enviado ao Google quando você usa o ✨, e no plano grátis o Google pode usá-lo para melhorar os produtos dele. Não mande dados pessoais.
+
+<img src="docs/telas/14-ia.png" width="220">
+
+---
+
 ## 6. Como personalizar (procure por `✏️ PERSONALIZE` no código)
 
 | Quero mudar… | Onde |
@@ -208,6 +248,11 @@ Cada uma foi inspirada num app que funciona para muita gente e adaptada para est
 | Tempo fora do app antes de a estrela cair | `app.js` → `CONFIG.starGraceSeconds` |
 | Intervalos dos flashcards | `app.js` → `NEXT_DAYS` |
 | Meta diária e Modo estrela | tela Perfil (ou Foco, para o Modo estrela) |
+| Botões da barra e blocos do menu `/` | `editor.js` → `TOOLBAR_ITEMS` e `SLASH_ITEMS` |
+| Cor do marca-texto | `editor.js` → `MARK_COLOR` |
+| Tamanho/qualidade das imagens salvas | `editor.js` → `IMG_MAX_WIDTH` e `IMG_QUALITY` |
+| Botões e "jeito" do assistente de IA | `ai.js` → `AI_ACTIONS` e `AI_SYSTEM` |
+| Modelos de IA oferecidos | `ai.js` → `AI_MODELS` |
 
 **Dica para editar com segurança:** antes de mexer, exporte um backup. Se a tela ficar em branco depois de uma mudança, aperte `F12` no navegador e abra a aba **Console**: ela mostra a linha do erro.
 
@@ -219,10 +264,13 @@ Cada uma foi inspirada num app que funciona para muita gente e adaptada para est
 - A barra do topo não usa mais efeito de desfoque, que deixava a rolagem pesada em celulares simples.
 - Conexão com o YouTube aberta antes de precisar, no máximo 3 avisos na tela e listas de notas e links mais rápidas.
 
-### Limitações conhecidas da v1
+### Limitações conhecidas
 - Os dados ficam só no aparelho em que você usa o app. Faça backup.
 - O progresso do vídeo conta o ponto mais longe que você alcançou, então pular para o final conta como assistido.
 - No iPhone, as notificações do timer só funcionam com o app instalado na tela inicial (iOS 16.4+). O som toca normalmente com o app aberto.
 - **Modo estrela:** o app só sabe se a tela dele está visível, não o que você faz no celular. Por isso a tela fica acesa durante o foco: se ela apagasse, contaria como "saiu do app". No computador, trocar de aba também derruba a estrela; se você estuda por um PDF em outra aba, desligue o Modo estrela.
 - Os lembretes ainda não chegam com o app fechado (veja a v2). Por enquanto use um alarme do celular.
+- **Print direto do vídeo do YouTube não é possível:** o YouTube não deixa outros sites copiarem a imagem do player. Tire um print do celular ou do computador e cole/anexe na nota.
+- Algumas ações do editor (transformar em lista, inserir link ou tempo) não entram no ↶ desfazer.
+- Imagens não são enviadas para a IA, só o texto da nota.
 - A busca do título automático do YouTube pode falhar em algumas redes. Nesse caso, edite o título na aula (⚙️ Editar).
