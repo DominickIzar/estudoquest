@@ -275,9 +275,17 @@ function cardQuestions(subject) {
   const used = new Set(battlesToday().flatMap(b => b.cardIds || []));
   const folder = new Map(state.notes.map(n => [n.id, n.folder || '']));
   const pool = state.cards.filter(c => !used.has(c.id) && (!subject || folder.get(c.noteId) === subject));
+  return cardsToQuestions(pool, BATTLE.questions);
+}
+
+// Transforma flashcards em perguntas de múltipla escolha (as erradas vêm de outros cards).
+// Também usada pelo desafio final da campanha (campaign.js).
+function cardsToQuestions(pool, n, hardFirst = true) {
+  const folder = new Map(state.notes.map(x => [x.id, x.folder || '']));
   const answers = [...new Set(state.cards.map(c => c.a))];
   if (!pool.length || answers.length < 4) return [];
-  return shuffle(pool).sort((a, b) => (a.box || 1) - (b.box || 1)).slice(0, BATTLE.questions).map(c => {
+  const ordered = hardFirst ? shuffle(pool).sort((a, b) => (a.box || 1) - (b.box || 1)) : shuffle(pool);
+  return ordered.slice(0, n).map(c => {
     const same = shuffle([...new Set(state.cards.filter(x => folder.get(x.noteId) === folder.get(c.noteId)).map(x => x.a))].filter(a => a !== c.a));
     const other = shuffle(answers.filter(a => a !== c.a && !same.includes(a)));
     const options = shuffle([c.a, ...[...same, ...other].slice(0, 3)]);

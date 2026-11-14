@@ -684,3 +684,43 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 .3rem; }
 .gear-slot .gs-icon { font-size: 1.8rem; }
 .gear-slot.empty { border-style: dashed; opacity: .7; }
 .gear-slot.empty small { color: var(--muted); }
+
+/* =====================================================================
+   v1.9: Modo Campanha
+   ===================================================================== */
+.view-tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface2); border-radius: 12px; margin-bottom: .8rem; }
+.view-tabs a { flex: 1; text-align: center; padding: .45rem; border-radius: 9px; color: var(--muted); font-weight: 700; font-size: .9rem; }
+.view-tabs a.on { background: var(--surface); color: var(--text); box-shadow: inset 0 0 0 1px var(--gold); }
+.icon-btn { background: none; border: 0; cursor: pointer; font-size: .85rem; padding: .1rem .3rem; color: var(--muted); border-radius: 6px; }
+.icon-btn:hover, .icon-btn:focus-visible { background: var(--surface2); color: var(--text); }
+
+/* A estrada: uma linha vertical com um marcador por capítulo */
+.campaign-road { list-style: none; padding: 0 0 0 2.6rem; margin: 1rem 0; position: relative; }
+.campaign-road::before { content: ""; position: absolute; left: 1.15rem; top: .5rem; bottom: 2rem; width: 3px; border-radius: 3px;
+  background: repeating-linear-gradient(to bottom, var(--border) 0 8px, transparent 8px 14px); }
+.station { position: relative; margin-bottom: 1rem; }
+.st-marker { position: absolute; left: -2.6rem; top: .7rem; width: 2.4rem; height: 2.4rem; border-radius: 50%; display: grid; place-items: center;
+  background: var(--surface2); border: 2px solid var(--border); font-weight: 800; z-index: 1; }
+.st-card { margin: 0; }
+.st-name { margin: .15rem 0 .4rem; display: flex; align-items: center; gap: .2rem; }
+.st-chip { font-size: .72rem; font-weight: 700; padding: .05rem .5rem; border-radius: 99px; background: var(--surface2); }
+.st-done .st-marker, .st-mastered .st-marker { border-color: var(--gold); background: #f0c46b22; }
+.st-done .st-chip, .st-mastered .st-chip { color: var(--gold); background: #f0c46b1f; }
+.st-current .st-marker { border-color: var(--accent); background: var(--btn-from); color: #fff; animation: sn-pulse 2.2s ease-in-out infinite; }
+.st-current .st-card { border-color: var(--accent); }
+.st-current .st-chip { color: #fff; background: var(--btn-from); }
+.st-ahead .st-card { opacity: .62; }
+.st-ahead .st-card:hover, .st-ahead .st-card:focus-within { opacity: 1; }
+.just-done .st-marker { animation: stamp .7s cubic-bezier(.2, 1.6, .4, 1) both; }
+@keyframes stamp { 0% { transform: scale(2.2) rotate(-20deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+
+.st-nodes { display: flex; flex-wrap: wrap; gap: .6rem; margin: .6rem 0 .2rem; }
+.mini-node { width: 72px; display: grid; justify-items: center; gap: .15rem; color: var(--text); text-align: center; }
+.mini-node .sn-orb { width: 46px; height: 46px; }
+.mini-node .sn-icon { font-size: 1.2rem; }
+.mini-node small { font-size: .66rem; line-height: 1.2; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.missions { margin-top: .6rem; padding-top: .5rem; border-top: 1px solid var(--border); }
+.missions li { display: grid; gap: .05rem; }
+.side-quests li { align-items: center; }
+.final-card { border-color: color-mix(in srgb, var(--gold) 45%, var(--border)); background: linear-gradient(160deg, #f0c46b14, var(--surface) 60%); }
+.st-final .st-marker { font-size: 1.2rem; }

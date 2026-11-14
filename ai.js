@@ -195,7 +195,7 @@ async function generateQuiz(context, video = null) {
  * opções: title, videoId (para "rever o trecho"), seek(t) (se o vídeo está aberto),
  *         onMissed(html) (coloca os erros como flashcards na nota).
  */
-function runQuiz(questions, { title = 'Quiz', videoId = '', seek = null, onMissed = null, source = {} } = {}) {
+function runQuiz(questions, { title = 'Quiz', videoId = '', seek = null, onMissed = null, source = {}, onFinish = null } = {}) {
   const dlg = document.getElementById('dialog');
   const form = document.getElementById('dialogForm');
   form.onsubmit = e => e.preventDefault();
@@ -249,6 +249,7 @@ function runQuiz(questions, { title = 'Quiz', videoId = '', seek = null, onMisse
     if (xp) addXP(xp, `quiz ${score}/${total} · +${dust} ✦`);
     else { save(); checkQuests(); }
     checkSkills();
+    onFinish?.({ score, total }); // ex.: desafio final da campanha
     const msg = perfect ? '🏆 Gabaritou!' : score >= total * 0.6 ? '✨ Mandou bem!' : '💪 Bom treino! Errar agora é o que faz lembrar na prova.';
     form.innerHTML = `
       <div class="quiz-result">

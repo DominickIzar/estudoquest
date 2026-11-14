@@ -19,8 +19,8 @@
    O editor de notas fica em editor.js, o assistente de IA em ai.js,
    o mascote, os Desejos, o chefe e os sons de foco em game.js, as
    árvores de conhecimento em skills.js, a ficha do personagem
-   (atributos e personalização) em character.js e as batalhas e o
-   equipamento em battle.js.
+   (atributos e personalização) em character.js, as batalhas e o
+   equipamento em battle.js e o modo campanha em campaign.js.
    ===================================================================== */
 
 
@@ -103,6 +103,7 @@ function defaultState() {
     quizzes: [],  // quizzes feitos: { at, score, total, title, videoId?, noteId?, nodeId? }
     battles: [],  // batalhas contra o chefe: { id, at, week, mode, subject, dmg, correct, total, cardIds }
     gear: { items: [], equipped: { weapon: '', armor: '', charm: '' } }, // equipamento (ver battle.js)
+    campaigns: {}, // modo campanha por matéria (ver campaign.js): { checkpoints, celebrated, chapterNames, finalBest, finalDoneAt }
     skillNodes: [], // árvores de conhecimento (ver skills.js): { id, subject, title, icon, noteIds, videoIds, requires, order, peak, peakAt }
     profile: {
       xp: 0, gamification: true, achievements: {},
@@ -278,6 +279,8 @@ const ACHIEVEMENTS = [
   { id: 'battle-1', icon: '⚔️', name: 'Primeira Batalha', desc: 'Enfrente o chefe numa batalha de perguntas', test: s => (s.battles || []).some(b => b.total > 0) },
   { id: 'battle-perfect', icon: '💥', name: 'Golpe Perfeito', desc: 'Acerte todas as perguntas de uma batalha', test: s => (s.battles || []).some(b => b.total >= 3 && b.correct === b.total) },
   { id: 'gear-legend', icon: '🗡️', name: 'Arma Lendária', desc: 'Encontre um equipamento lendário', test: s => (s.gear?.items || []).some(i => i.rarity === 'lendario') },
+  { id: 'checkpoint-1', icon: '⛳', name: 'Primeiro Checkpoint', desc: 'Conclua um capítulo da campanha', test: s => Object.values(s.campaigns || {}).some(c => Object.keys(c.checkpoints || {}).length > 0) },
+  { id: 'campaign-1', icon: '🏰', name: 'Campanha Concluída', desc: 'Vença o desafio final de uma matéria', test: s => Object.values(s.campaigns || {}).some(c => c.finalDoneAt) },
   { id: 'night', icon: '🦉', name: 'Coruja', desc: 'Termine uma sessão depois das 23h', test: s => s.sessions.some(x => { const h = new Date(x.endedAt).getHours(); return h >= 23 || h < 4; }) },
 ];
 
@@ -1909,6 +1912,7 @@ function route() {
   if (location.hash !== lastPath) { window.scrollTo(0, 0); lastPath = location.hash; }
   checkSkills(); // algum conceito subiu de estágio desde a última tela?
   checkAttributes(); // atributos só sobem (ver character.js)
+  checkCampaigns(); // checkpoints novos da campanha (ver campaign.js)
 
   switch (name) {
     case 'notes': a ? viewNote(el, a) : viewNotes(el); break;
@@ -1923,6 +1927,7 @@ function route() {
     case 'wish': viewWish(el); break;
     case 'battle': viewBattle(el); break;
     case 'arsenal': viewArsenal(el); break;
+    case 'campaign': viewCampaign(el, a); break;
     default: viewHome(el);
   }
   document.querySelectorAll('.tabbar a').forEach(t => t.classList.toggle('on', t.dataset.tab === name || (name === 'home' && t.dataset.tab === 'home')));

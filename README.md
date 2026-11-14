@@ -44,6 +44,7 @@ Um app de estudos que junta num só lugar **caderno de notas**, **videoaulas com
 | `ai.js` | O assistente de IA (Gemini, plano grátis) |
 | `skills.js` | Árvores de conhecimento: conceitos por matéria, estágios Descoberto → Praticado → Dominado |
 | `character.js` | Ficha do personagem: atributos (Conhecimento, Disciplina, Maestria), classe e personalização |
+| `campaign.js` | Modo campanha: capítulos, checkpoints, missões e desafio final por matéria |
 | `battle.js` | Batalhas contra o chefe (perguntas) e equipamento estilo Diablo |
 | `game.js` | Mascote, pó de estrela e Desejos, chefe da semana, rival, sons de foco, provas, lembrete no calendário |
 | `sw.js` + `manifest.webmanifest` + `icon.svg` | O que faz o app ser instalável e abrir offline |
@@ -69,6 +70,7 @@ O player oficial do YouTube permite ler "em que segundo o vídeo está", e é is
 - **Foco**: Pomodoro (foco, pausa curta, pausa longa), botão **"Só 5 minutinhos"** para vencer a preguiça de começar, vincular a sessão a uma tarefa, som e notificação ao terminar. O timer continua certo mesmo se você trocar de tela.
 - **Busca única** no topo: procura em notas, aulas (inclusive nas anotações com tempo) e tarefas.
 - **Gamificação (pode ser desligada no Perfil)**: XP, níveis, sequência de dias 🔥, 18 conquistas e uma coleção de 13 itens.
+- **Modo campanha (v1.9)**: veja a seção [Modo campanha](#️-modo-campanha-v19).
 - **Batalhas e equipamento (v1.8)**: veja a seção [Batalhas e equipamento](#️-batalhas-e-equipamento-v18).
 - **Ficha do personagem (v1.7)**: veja a seção [Ficha do personagem](#-ficha-do-personagem-v17).
 - **Árvores de conhecimento (v1.6)**: veja a seção [Árvores de conhecimento](#-árvores-de-conhecimento-v16). Plano das próximas fases em [`docs/RPG-ROADMAP.md`](docs/RPG-ROADMAP.md).
@@ -112,6 +114,7 @@ Perfil        { xp, gamification, achievements, shields, frozen[],
                 pity, wishes, bossWins[] }
 Prova         { id, name, date (AAAA-MM-DD) }
 Quiz feito    { at, score, total, title, videoId?, noteId?, nodeId? }
+Campanha      campaigns[matéria] = { checkpoints {capítulo: data}, celebrated, chapterNames, finalBest, finalDoneAt }
 Batalha       { id, at, week, mode ('cards'|'ai'), subject, dmg, correct, total, cardIds[] }
 Item          { id, slot, base, rarity, ilvl, subject, affixes[{k, v}], unique, name, power }
 gear          { items[], equipped { weapon, armor, charm } }
@@ -216,6 +219,21 @@ Cada uma foi inspirada num app que funciona para muita gente e adaptada para est
 - Ative o **Modo Foco** do celular durante o Pomodoro (Android: Bem-estar digital; iPhone: Ajustes → Foco). O app não consegue bloquear outros apps sozinho.
 - Crie um **alarme** no horário do seu plano com o nome "📚 EstudoQuest".
 - Coloque o ícone do app na **primeira tela** do celular, no lugar de uma rede social.
+
+---
+
+## 🗺️ Modo campanha (v1.9)
+
+Fase 4 do modo RPG. Cada matéria com árvore ganha uma **campanha** (aba 🗺️ Campanha, ao lado de 🌳 Árvore):
+
+- **📖 Capítulos:** os "andares" da árvore. Conceitos sem pré-requisito ficam no capítulo 1, os que dependem deles no 2, e assim por diante. Dá para **renomear** cada capítulo (✏️).
+- **⛳ Checkpoints:** um capítulo é concluído quando todos os conceitos dele chegam a 🛠️ Praticado. Cada checkpoint dá XP e ✦ uma única vez, e o marcador ganha um "carimbo" animado na próxima visita.
+- **📍 Você está aqui:** o capítulo atual mostra as **missões do capítulo** (o próximo passo de cada conceito). Os capítulos à frente aparecem "na névoa", mas **nada fica trancado**: dá para estudar fora de ordem.
+- **📜 Missões secundárias:** as tarefas do quadro marcadas com a matéria aparecem na campanha, e dá para concluí-las ali mesmo.
+- **🏰 Desafio final:** abre quando todos os capítulos chegam ao checkpoint. São 8 perguntas misturando a matéria inteira (com seus flashcards ou com a IA). Acertando 80%, a campanha é concluída e você ganha um **item épico ou lendário**. Errar não tira nada: tente quantas vezes quiser, e o app guarda seu melhor resultado.
+- O progresso usa o maior estágio já conquistado de cada conceito, então a campanha **nunca regride**. Quem já tinha árvores recebe os checkpoints que já merecia.
+
+<img src="docs/telas/39-campanha.png" width="200"> <img src="docs/telas/40-campanha-final-aberto.png" width="200"> <img src="docs/telas/41-campanha-concluida.png" width="200">
 
 ---
 
@@ -381,6 +399,7 @@ Limites grátis aproximados (o Google muda de tempos em tempos; confira em AI St
 | Tamanho/qualidade das imagens salvas | `editor.js` → `IMG_MAX_WIDTH` e `IMG_QUALITY` |
 | Botões e "jeito" do assistente de IA | `ai.js` → `AI_ACTIONS` e `AI_SYSTEM` |
 | Regras de cada estágio da árvore | `skills.js` → `SKILL_RULES` |
+| Recompensas e regras da campanha (checkpoint, desafio final) | `campaign.js` → `CAMPAIGN` |
 | Regras das batalhas (perguntas, dano, itens por dia) | `battle.js` → `BATTLE` |
 | Tipos de item, bônus e poderes lendários | `battle.js` → `GEAR_BASES`, `AFFIXES`, `UNIQUES` |
 | De onde vêm os pontos dos atributos | `character.js` → `ATTRS` |

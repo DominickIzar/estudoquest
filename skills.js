@@ -353,7 +353,7 @@ function viewSkills(el) {
     <div class="subject-list">${subs.map(s => {
       const nodes = nodesOf(s), st = nodes.map(n => nodeProgress(n, idx).status);
       return `<a class="card subject-card" href="#/skills/${enc(s)}">
-        <div class="row between"><strong>📚 ${esc(s)}</strong><span class="muted small">${nodes.length ? `👑 ${st.filter(x => x === 'mastered').length}/${nodes.length}` : 'criar árvore →'}</span></div>
+        <div class="row between"><strong>📚 ${esc(s)}</strong><span class="muted small">${nodes.length ? `${(() => { const c = campaignSummary(s); return c.finished ? '🏰 concluída · ' : `🗺️ cap. ${(c.current?.i ?? c.chapters.length - 1) + 1}/${c.chapters.length} · `; })()}👑 ${st.filter(x => x === 'mastered').length}/${nodes.length}` : 'criar árvore →'}</span></div>
         ${nodes.length ? skillBarHTML(st) : '<p class="muted small">Toque para montar a árvore a partir das suas aulas e notas.</p>'}
       </a>`;
     }).join('') || '<p class="muted empty">Crie notas com uma pasta (matéria) ou adicione aulas com um curso, e as matérias aparecem aqui.</p>'}</div>`;
@@ -367,6 +367,7 @@ function viewSkillTree(el, subject) {
   const idx = skillIndex();
   const nodes = nodesOf(subject);
   const head = `<div class="view-head"><a href="#/skills" class="back">← Árvores</a>${nodes.length ? '<button class="btn" id="treeMenu">⚙️ Montar</button>' : ''}</div>
+    ${nodes.length ? treeTabsHTML(subject, 'tree') : ''}
     <h1 class="tree-title">📚 ${esc(subject)}</h1>`;
 
   if (!nodes.length) {
@@ -570,7 +571,7 @@ function homeNextStepHTML() {
   const next = nextNodeOf([...state.skillNodes], prog, depths);
   if (!next) return '<a class="card next-step" href="#/skills"><span class="muted small">🌳 Árvores</span><strong>Tudo dominado por enquanto 👑</strong></a>';
   return `<a class="card next-step" href="#/skills/${enc(next.subject)}/${next.id}">
-    <span class="muted small">🌳 Próximo passo · ${esc(next.subject)}</span>
+    <span class="muted small">🌳 Próximo passo · ${esc(next.subject)} · capítulo ${depths.get(next.id) + 1}</span>
     <strong>${esc(next.icon || '✦')} ${esc(next.title)}</strong>
     <span class="small">${esc(nodeHint(prog.get(next.id)))}</span></a>`;
 }

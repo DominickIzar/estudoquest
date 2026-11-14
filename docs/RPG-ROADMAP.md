@@ -60,7 +60,7 @@ Each phase ships on its own, keeps all features working, and adds an end-to-end 
 - Reuse `runQuiz` (add a `onAnswer` hook) and `bossInfo` (`dmg = focus + battle`).
 - **Test:** damage accounting, defeat reward once per week.
 
-### Phase 4: Campaign mode
+### Phase 4: Campaign mode ✅ (v1.9: chapters = tree layers; checkpoint when every node in a chapter is Practiced; chapter missions plus subject-tagged tasks as side quests; final challenge unlocked after all checkpoints and retryable; nothing is locked)
 - A course becomes chapters (tree layers), checkpoints (a node mastered unlocks the next chapter banner), side quests (tasks tagged with the subject) and a final challenge (a mixed quiz over every node in the course; mastery-gated, but always retryable).
 - A visual path screen with a map-like vertical road reuses the tree layout.
 - **Test:** chapter unlocking derived from node peaks.
