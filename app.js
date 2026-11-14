@@ -31,6 +31,7 @@ const CONFIG = {
     taskDone: 10,      // tarefa movida para a última coluna
     videoDone: 20,     // aula assistida até o fim
     noteCreated: 2,    // nota nova
+    quizCorrect: 3,    // cada acerto num quiz da IA
     questBonus: 30,    // completar as 3 missões do dia
     cardReview: 1,     // cada flashcard revisado
   },
@@ -96,6 +97,7 @@ function defaultState() {
     parking: [],  // distrações anotadas durante o foco: { id, text, createdAt }
     daily: {},    // contadores por dia, ex.: { '2026-10-30': { reviews: 5, parked: 1 } }
     exams: [],    // provas: { id, name, date (AAAA-MM-DD) }
+    quizzes: [],  // quizzes feitos: { at, score, total, title }
     profile: {
       xp: 0, gamification: true, achievements: {},
       shields: 0, frozen: [],       // escudos guardados e dias "salvos" por escudo
@@ -253,6 +255,8 @@ const ACHIEVEMENTS = [
   { id: 'boss-4', icon: '🏰', name: 'Um Mês de Vitórias', desc: 'Derrote 4 chefes da semana', test: s => (s.profile.bossWins || []).length >= 4 },
   { id: 'wish-1', icon: '🌠', name: 'Primeiro Desejo', desc: 'Faça um desejo às estrelas', test: s => (s.profile.wishes || 0) >= 1 },
   { id: 'legend', icon: '👑', name: 'Sorte Lendária', desc: 'Ganhe um item lendário', test: s => (s.profile.inventory || []).some(id => itemById(id)?.rarity === 'lendario') },
+  { id: 'quiz-1', icon: '❓', name: 'Hora da Prova (de Treino)', desc: 'Faça um quiz com a IA', test: s => (s.quizzes || []).length >= 1 },
+  { id: 'quiz-perfect', icon: '💯', name: 'Gabaritou!', desc: 'Acerte todas as perguntas de um quiz', test: s => (s.quizzes || []).some(q => q.score === q.total) },
   { id: 'night', icon: '🦉', name: 'Coruja', desc: 'Termine uma sessão depois das 23h', test: s => s.sessions.some(x => { const h = new Date(x.endedAt).getHours(); return h >= 23 || h < 4; }) },
 ];
 
@@ -348,6 +352,7 @@ const QUESTS = [
   { id: 'task1', icon: '✅', text: 'Conclua 1 tarefa', goal: 1, val: d => d.tasks, when: s => s.tasks.some(t => t.column !== doneColumn()) },
   { id: 'cards5', icon: '🃏', text: 'Revise 5 flashcards', goal: 5, val: d => d.reviews, when: s => s.cards.length >= 5 },
   { id: 'park1', icon: '💭', text: 'Use o 💭 em vez de pegar o celular', goal: 1, val: d => d.parked },
+  { id: 'quiz1', icon: '❓', text: 'Faça um quiz com a IA', goal: 1, val: d => d.quizzes, when: () => !!aiConfig().key },
 ];
 
 // Soma +1 num contador do dia (ex.: bump('reviews')).
@@ -369,6 +374,7 @@ function todayStats() {
     tasks: state.tasks.filter(t => sameDay(t.completedAt)).length,
     reviews: daily.reviews || 0,
     parked: daily.parked || 0,
+    quizzes: daily.quizzes || 0,
   };
 }
 
@@ -1200,6 +1206,7 @@ function viewVideo(el, id, startParam) {
         <div class="tabs" role="tablist">
           <button class="tab ${tab === 'note' ? 'on' : ''}" data-tab="note">📝 Anotações</button>
           <button class="tab ${tab === 'marks' ? 'on' : ''}" data-tab="marks">⏱ Marcações <span class="count" id="marksCount">${v.marks.length}</span></button>
+          <button class="tab ${tab === 'ai' ? 'on' : ''}" data-tab="ai">✨ IA</button>
         </div>
 
         <div class="tab-panel" data-panel="note" ${tab === 'note' ? '' : 'hidden'}>
@@ -1217,6 +1224,25 @@ function viewVideo(el, id, startParam) {
           <label class="switch small"><input type="checkbox" id="pauseOnMark" ${state.settings.pauseOnMark ? 'checked' : ''}> Pausar o vídeo enquanto escrevo uma marcação</label>
           <ul class="marks" id="marks"></ul>
           <button class="btn" id="exportMarks">📝 Copiar marcações para as anotações</button>
+        </div>
+
+        <div class="tab-panel" data-panel="ai" ${tab === 'ai' ? '' : 'hidden'}>
+          ${v.kind === 'youtube'
+            ? '<p class="hint">A IA <strong>assiste esta aula</strong> e usa suas anotações junto. Funciona com vídeos <strong>públicos</strong> do YouTube; no plano grátis, até ~8 horas de vídeo por dia.</p>'
+            : '<p class="warn-box">A IA só consegue assistir vídeos do YouTube. Para esta aula, ela vai usar as suas anotações.</p>'}
+          ${v.kind === 'youtube' ? `<label>A IA deve ver
+            <select id="aiRange">
+              <option value="all">a aula inteira</option>
+              ${(v.watched || 0) > 30 ? `<option value="seen">só até onde eu assisti (${fmtClock(v.watched)}): sem spoilers</option>` : ''}
+              ${(v.position || 0) > 60 ? '<option value="recent">só os últimos 10 minutos que eu vi</option>' : ''}
+            </select></label>` : ''}
+          <div class="ai-actions">${VIDEO_AI_ACTIONS.map(a => `<button type="button" class="btn" data-vai="${a.id}">${a.icon} ${a.label}</button>`).join('')}</div>
+          <div class="ai-ask"><input id="vaiQuestion" placeholder="Pergunte algo sobre a aula…" autocomplete="off"><button type="button" class="btn primary" id="vaiAsk">Perguntar</button></div>
+          <div id="vaiOut" class="ai-out" hidden></div>
+          <div class="row wrap" id="vaiButtons" hidden>
+            <button type="button" class="btn primary" id="vaiInsert">Inserir nas anotações</button>
+            <button type="button" class="btn ghost" id="vaiAgain">🔄 Gerar de novo</button>
+          </div>
         </div>
         ${otherNotes.length ? `<section class="backlinks"><h4>Outras notas desta aula</h4>${otherNotes.map(n => `<a href="#/notes/${n.id}">${esc(n.title || 'Sem título')}</a>`).join('')}</section>` : ''}
       </div>
@@ -1289,6 +1315,69 @@ function viewVideo(el, id, startParam) {
     marks.forEach(m => { m.exported = true; });
     save(); renderMarks(); showTab('note');
   };
+
+  // --- ✨ IA da aula: o Gemini assiste o vídeo do YouTube (ver ai.js)
+  const aiOut = el.querySelector('#vaiOut'), aiBtns = el.querySelector('#vaiButtons');
+  const rangeSel = el.querySelector('#aiRange');
+  let lastAI = null; // { key, heading, text, request }
+  const videoForAI = () => {
+    if (v.kind !== 'youtube') return null;
+    const url = `https://www.youtube.com/watch?v=${v.ytId}`;
+    const nowAt = Math.floor(player?.time() || v.position || 0);
+    if (rangeSel?.value === 'seen') return { url, end: Math.max(v.watched || 0, nowAt) };
+    if (rangeSel?.value === 'recent') return { url, start: Math.max(0, nowAt - 600), end: Math.max(nowAt, 1) };
+    return { url };
+  };
+  const showAI = (text, heading, cached) => {
+    aiOut.hidden = false;
+    aiOut.innerHTML = (cached ? `<p class="muted small">Guardado em ${fmtDate(cached)} (não gastou seu limite).</p>` : '') + mdToHtml(text, { videoId: v.id });
+    aiBtns.hidden = false;
+  };
+  const runVideoAI = async (request, heading, cacheKey = null, force = false) => {
+    if (!aiConfig().key) return aiSetupDialog(() => runVideoAI(request, heading, cacheKey, force));
+    const context = ed.text().trim();
+    const video = videoForAI();
+    if (!video && !context) { toast('Escreva algumas anotações primeiro: sem YouTube, a IA usa só elas.'); return; }
+    const key = cacheKey && `${cacheKey}:${rangeSel?.value || 'all'}`;
+    v.aiCache ||= {};
+    lastAI = { key, heading, request, cacheKey };
+    if (key && v.aiCache[key] && !force) { lastAI.text = v.aiCache[key].text; showAI(lastAI.text, heading, v.aiCache[key].at); return; }
+    el.querySelectorAll('[data-vai], #vaiAsk').forEach(b => { b.disabled = true; });
+    aiOut.hidden = false; aiBtns.hidden = true;
+    aiOut.innerHTML = `<p class="ai-loading">✨ ${video ? 'A IA está assistindo a aula… (aulas longas podem levar até 1 minuto)' : 'Pensando…'}</p>`;
+    try {
+      const text = await askAI(request, context, { video });
+      lastAI.text = text;
+      if (key) { v.aiCache[key] = { text, at: now() }; save(); }
+      showAI(text, heading);
+    } catch (err) {
+      aiOut.innerHTML = `<p class="ai-error">⚠️ ${esc(err.message)}</p>`;
+    } finally {
+      el.querySelectorAll('[data-vai], #vaiAsk').forEach(b => { b.disabled = false; });
+    }
+  };
+  el.querySelectorAll('[data-vai]').forEach(b => b.onclick = () => {
+    const a = VIDEO_AI_ACTIONS.find(x => x.id === b.dataset.vai);
+    if (a.quiz) {
+      startQuiz({ getContext: () => ed.text(), video: videoForAI(), title: `Quiz: ${v.title}`, videoId: v.id,
+        seek: t => player?.seek(t), onMissed: html => { ed.appendHTML(html); showTab('note'); } });
+    } else runVideoAI(a.prompt, a.heading, a.id);
+  });
+  const vq = el.querySelector('#vaiQuestion');
+  const askVideo = () => { if (vq.value.trim()) runVideoAI(`Responda à pergunta do estudante sobre a aula: ${vq.value.trim()}`, `❓ ${vq.value.trim()}`); };
+  el.querySelector('#vaiAsk').onclick = askVideo;
+  vq.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); askVideo(); } };
+  el.querySelector('#vaiAgain').onclick = () => lastAI && runVideoAI(lastAI.request, lastAI.heading, lastAI.cacheKey, true);
+  el.querySelector('#vaiInsert').onclick = () => {
+    if (!lastAI?.text) return;
+    ed.appendHTML(`<h3>${esc(lastAI.heading)}</h3>${mdToHtml(lastAI.text, { videoId: v.id })}`);
+    showTab('note');
+    toast('Inserido nas anotações da aula ✨');
+  };
+  aiOut.addEventListener('click', e => { // tempos clicáveis na resposta da IA
+    const a = e.target.closest('a.ts');
+    if (a) { e.preventDefault(); player?.seek(Number(a.dataset.t)); }
+  });
 
   el.querySelector('#toggleDone').onclick = e => {
     if (v.done) v.done = false; else completeVideo(v);
@@ -1683,7 +1772,7 @@ function viewProfile(el) {
 
     <section class="card">
       <h3>✨ Assistente IA (grátis)</h3>
-      <p class="muted small">Resume notas, cria flashcards e quizzes e tira dúvidas. Usa o Gemini, do Google, que tem plano gratuito:
+      <p class="muted small">Resume notas e <strong>videoaulas do YouTube</strong> (ela assiste o vídeo!), cria flashcards e quizzes e tira dúvidas. Usa o Gemini, do Google, que tem plano gratuito:
         crie uma chave em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a> e cole abaixo.
         A chave fica só neste aparelho e não vai no backup. No plano grátis, o Google pode usar o que você envia para melhorar os produtos dele.</p>
       <label>Chave da API<input type="password" id="aiKey" autocomplete="off" placeholder="AIza…" value="${esc(aiConfig().key || '')}"></label>

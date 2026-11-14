@@ -18,7 +18,7 @@
 
 const GAME = {
   // ✏️ PERSONALIZE: quanto pó de estrela ✦ cada coisa dá.
-  stardust: { per25min: 10, starBonus: 2, dailyGoal: 15, quests: 20, boss: 80, welcomeGift: 100 },
+  stardust: { per25min: 10, starBonus: 2, dailyGoal: 15, quests: 20, boss: 80, welcomeGift: 100, quizCorrect: 1, quizPerfect: 10 },
   wishCost: 50,
   pity: 10, // depois de 9 desejos "comuns" seguidos, o 10º é pelo menos raro
 

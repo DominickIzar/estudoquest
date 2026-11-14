@@ -3,7 +3,7 @@
    guardada e, ao mesmo tempo, baixa a versão nova para a próxima abertura.
    ✏️ Quando mudar o código e publicar, recarregue o app 2 vezes para ver a mudança
    (ou troque o número em CACHE abaixo para forçar). */
-const CACHE = 'estudoquest-v5';
+const CACHE = 'estudoquest-v6';
 const FILES = ['./', 'index.html', 'style.css', 'editor.js', 'ai.js', 'game.js', 'app.js', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', e => {

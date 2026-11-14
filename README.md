@@ -66,6 +66,7 @@ O player oficial do YouTube permite ler "em que segundo o vídeo está", e é is
 - **Foco**: Pomodoro (foco, pausa curta, pausa longa), botão **"Só 5 minutinhos"** para vencer a preguiça de começar, vincular a sessão a uma tarefa, som e notificação ao terminar. O timer continua certo mesmo se você trocar de tela.
 - **Busca única** no topo: procura em notas, aulas (inclusive nas anotações com tempo) e tarefas.
 - **Gamificação (pode ser desligada no Perfil)**: XP, níveis, sequência de dias 🔥, 18 conquistas e uma coleção de 13 itens.
+- **IA que assiste as aulas e quiz interativo (v1.5)**: veja a seção [IA que assiste suas videoaulas](#-ia-que-assiste-suas-videoaulas-v15).
 - **Mascote, Desejos e chefe da semana (v1.4)**: veja a seção [Mais jogo e mais hábito](#-mais-jogo-e-mais-hábito-v14).
 - **Hábito e foco (v1.2)**: veja a seção [Mecânicas para criar o hábito](#-mecânicas-para-criar-o-hábito-v12).
 - **Tema "noite de outono"**: sempre escuro, roxo ametista, abóbora e dourado, com céu estrelado (feito só com CSS, sem imagens pesadas). Funciona offline e tem backup em arquivo.
@@ -104,6 +105,8 @@ Perfil        { xp, gamification, achievements, shields, frozen[],
                 petName, stardust, inventory[], equipped {theme, acc, title},
                 pity, wishes, bossWins[] }
 Prova         { id, name, date (AAAA-MM-DD) }
+Quiz feito    { at, score, total, title }
+Videoaula.aiCache  respostas da IA guardadas (resumo, mapa…), para não gastar o limite de novo
 ```
 
 **Como se relacionam:**
@@ -203,6 +206,30 @@ Cada uma foi inspirada num app que funciona para muita gente e adaptada para est
 
 ---
 
+## 🎬✨ IA que assiste suas videoaulas (v1.5)
+
+O Gemini consegue **assistir vídeos públicos do YouTube direto pelo link**, sem precisar de legenda. Na página da aula há uma aba **✨ IA** com:
+
+| Botão | O que faz |
+|---|---|
+| 📝 **Resumo com tempos** | Resumo em tópicos; cada tópico tem um ▶ 12:34 clicável que pula o vídeo para aquele trecho. |
+| 🗺️ **Mapa de tópicos** | Os "capítulos" da aula com o momento de cada um. Ótimo para achar a parte que você não entendeu. |
+| 🃏 **Flashcards da aula** | Cartões `pergunta :: resposta` que entram direto na sua revisão espaçada. |
+| ❓ **Quiz da aula** | Quiz **interativo**, uma pergunta por vez, com explicação. Quando você erra, aparece **"▶ Rever em 03:40"**, que leva ao trecho do vídeo que explica aquilo. Cada acerto vale XP e ✦ (gabaritar dá bônus), e no fim **os erros viram flashcards** com um toque. |
+| **Pergunte sobre a aula** | Tire dúvidas como se fosse com um monitor que viu a aula com você. |
+
+- **"A IA deve ver"**: a aula inteira, **só até onde você assistiu** (sem spoilers e gastando menos do limite) ou só os últimos 10 minutos.
+- A IA também lê as **suas anotações da aula**, para a resposta conversar com o que você já escreveu.
+- Resumo e mapa ficam **guardados**: abrir de novo não gasta seu limite (dá para pedir "🔄 Gerar de novo").
+- O **quiz interativo** também funciona nas notas: ✨ → ❓ Quiz interativo.
+- Nova missão diária "Faça um quiz com a IA" e duas conquistas novas (❓ e 💯).
+
+**Limites e cuidados:** só vídeos **públicos** (privados ou "não listados" não funcionam). No plano grátis, até **~8 horas de vídeo por dia**. Esse recurso do Google ainda está em teste, então limites e regras podem mudar. Vídeos que não são do YouTube (link .mp4) usam só as suas anotações.
+
+<img src="docs/telas/20-ia-aula.png" width="200"> <img src="docs/telas/22-quiz-erro.png" width="200"> <img src="docs/telas/23-quiz-resultado.png" width="200">
+
+---
+
 ## 🦊 Mais jogo e mais hábito (v1.4)
 
 Inspirado no **Finch** (mascote que cresce com você), no **Habitica** (chefes), no **YPT** (comparar seu tempo de estudo) e em jogos gacha. A regra foi: **só se ganha recompensa estudando**, e nada exige "cuidar" do jogo. As análises desses apps alertam que, quando o jogo vira o passatempo, o estudo fica de lado.
@@ -280,6 +307,9 @@ Limites grátis aproximados (o Google muda de tempos em tempos; confira em AI St
 | Cor do marca-texto | `editor.js` → `MARK_COLOR` |
 | Tamanho/qualidade das imagens salvas | `editor.js` → `IMG_MAX_WIDTH` e `IMG_QUALITY` |
 | Botões e "jeito" do assistente de IA | `ai.js` → `AI_ACTIONS` e `AI_SYSTEM` |
+| Botões da aba ✨ IA das aulas | `ai.js` → `VIDEO_AI_ACTIONS` |
+| Quantidade e estilo das perguntas do quiz | `ai.js` → `QUIZ_PROMPT` |
+| XP e ✦ do quiz | `app.js` → `CONFIG.xp.quizCorrect`; `game.js` → `GAME.stardust.quizCorrect` / `quizPerfect` |
 | Modelos de IA oferecidos | `ai.js` → `AI_MODELS` |
 
 **Dica para editar com segurança:** antes de mexer, exporte um backup. Se a tela ficar em branco depois de uma mudança, aperte `F12` no navegador e abra a aba **Console**: ela mostra a linha do erro.

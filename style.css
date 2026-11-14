@@ -473,3 +473,29 @@ dialog { max-height: 90vh; }
 .wc-bar i { width: 100%; background: linear-gradient(0deg, var(--btn-from), var(--gold)); border-radius: 8px 8px 0 0; }
 .wc-day { font-size: .75rem; color: var(--muted); }
 .wc-col.today .wc-day { color: var(--gold); font-weight: 700; }
+
+/* =====================================================================
+   v1.5: IA das videoaulas e quiz interativo
+   ===================================================================== */
+.quiz-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.quiz-dots { display: flex; gap: 4px; }
+.quiz-dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); }
+.quiz-dots i.now { background: var(--accent); }
+.quiz-dots i.ok { background: var(--ok); border-color: var(--ok); }
+.quiz-dots i.bad { background: var(--danger); border-color: var(--danger); }
+.quiz-q { font-size: 1.1rem; line-height: 1.4; margin: .2rem 0 .8rem; }
+.quiz-options { display: grid; gap: .5rem; }
+.quiz-opt { display: flex; gap: .7rem; align-items: center; text-align: left; width: 100%; padding: .65rem .8rem; border-radius: 12px;
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text); cursor: pointer; font: inherit; }
+.quiz-opt b { flex: none; width: 1.7rem; height: 1.7rem; display: grid; place-items: center; border-radius: 50%; background: var(--surface); color: var(--gold); }
+.quiz-opt:hover:not(:disabled) { border-color: var(--accent); }
+.quiz-opt:disabled { cursor: default; opacity: .7; }
+.quiz-opt.right { border-color: var(--ok); background: color-mix(in srgb, var(--ok) 18%, var(--surface2)); opacity: 1; }
+.quiz-opt.wrong { border-color: var(--danger); background: color-mix(in srgb, var(--danger) 18%, var(--surface2)); opacity: 1; }
+.quiz-feedback { margin-top: .8rem; padding: .6rem .8rem; border-radius: 12px; font-size: .92rem; display: grid; gap: .4rem; justify-items: start; }
+.quiz-feedback.ok { background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.quiz-feedback.bad { background: color-mix(in srgb, var(--danger) 14%, transparent); }
+.quiz-result { text-align: center; padding: .5rem 0; }
+.quiz-score { font-size: 3rem; font-weight: 800; color: var(--gold); text-shadow: 0 0 18px #f0c46b66; }
+.ai-out a.ts { cursor: pointer; }
+.tabs .tab { flex: 1; white-space: nowrap; padding: .5rem .25rem; font-size: .9rem; }
