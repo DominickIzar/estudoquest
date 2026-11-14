@@ -3,7 +3,7 @@
 Um app de estudos que junta num só lugar **caderno de notas**, **videoaulas com progresso**, **quadro de tarefas** e **timer Pomodoro**, com uma camada de jogo opcional (XP, níveis, conquistas e uma coleção que cresce).
 
 <p>
-<img src="docs/telas/0-inicio.png" width="180"> <img src="docs/telas/9-imersao.png" width="180"> <img src="docs/telas/15-aula-anotacoes.png" width="180"> <img src="docs/telas/4-tarefas.png" width="180"> <img src="docs/telas/7-perfil.png" width="180">
+<img src="docs/telas/16-inicio-mascote.png" width="180"> <img src="docs/telas/9-imersao.png" width="180"> <img src="docs/telas/15-aula-anotacoes.png" width="180"> <img src="docs/telas/4-tarefas.png" width="180"> <img src="docs/telas/7-perfil.png" width="180">
 </p>
 
 ---
@@ -42,6 +42,7 @@ Um app de estudos que junta num só lugar **caderno de notas**, **videoaulas com
 | `app.js` | Toda a lógica, dividida em 7 seções numeradas |
 | `editor.js` | O editor de notas estilo Notion (barra de formatação, menu "/", links, imagens) |
 | `ai.js` | O assistente de IA (Gemini, plano grátis) |
+| `game.js` | Mascote, pó de estrela e Desejos, chefe da semana, rival, sons de foco, provas, lembrete no calendário |
 | `sw.js` + `manifest.webmanifest` + `icon.svg` | O que faz o app ser instalável e abrir offline |
 
 **Por que sem React, Vue etc.?** Para você conseguir manter sozinho: não há nada para instalar, compilar ou atualizar. Você edita um arquivo, recarrega a página e vê a mudança.
@@ -65,19 +66,19 @@ O player oficial do YouTube permite ler "em que segundo o vídeo está", e é is
 - **Foco**: Pomodoro (foco, pausa curta, pausa longa), botão **"Só 5 minutinhos"** para vencer a preguiça de começar, vincular a sessão a uma tarefa, som e notificação ao terminar. O timer continua certo mesmo se você trocar de tela.
 - **Busca única** no topo: procura em notas, aulas (inclusive nas anotações com tempo) e tarefas.
 - **Gamificação (pode ser desligada no Perfil)**: XP, níveis, sequência de dias 🔥, 18 conquistas e uma coleção de 13 itens.
+- **Mascote, Desejos e chefe da semana (v1.4)**: veja a seção [Mais jogo e mais hábito](#-mais-jogo-e-mais-hábito-v14).
 - **Hábito e foco (v1.2)**: veja a seção [Mecânicas para criar o hábito](#-mecânicas-para-criar-o-hábito-v12).
 - **Tema "noite de outono"**: sempre escuro, roxo ametista, abóbora e dourado, com céu estrelado (feito só com CSS, sem imagens pesadas). Funciona offline e tem backup em arquivo.
 
-### 🔜 v2: próximos passos sugeridos (em ordem de valor)
-1. **Sincronizar entre aparelhos** (ex.: [Supabase](https://supabase.com) ou Firebase no plano grátis), que substitui o backup manual.
-2. **Lembrete diário no horário do seu plano**, mesmo com o app fechado. Precisa de um serviço de notificações; dá pra começar grátis com o [ntfy](https://ntfy.sh).
-3. **Revisão semanal** no domingo: resumo da semana, melhores horários (a partir das avaliações 😀😐😞) e meta da próxima semana.
-4. **Estudo em grupo** estilo Focusmate/YPT: ver amigos focando ao mesmo tempo. Precisa de servidor.
-5. **Editor**: arrastar blocos para reordenar, tabelas, blocos recolhíveis e redimensionar imagens.
-6. **IA**: perguntar sobre *todas* as notas de uma matéria, e enviar os prints junto (o Gemini entende imagens).
-7. **Lembretes de prazo** por notificação e **calendário** das tarefas.
-8. Renomear uma nota atualizando os `[[links]]` nas outras automaticamente.
-9. Coleção com imagens próprias em vez de emojis, constelações com nome no céu e temas desbloqueáveis.
+### 🔜 Próximos passos sugeridos (em ordem de valor)
+1. **Estudar com amigos** (salas, ranking e chefe em grupo, estilo YPT/Habitica). Precisa de um servidor; dá para começar grátis com o [Supabase](https://supabase.com).
+2. **Sincronizar entre aparelhos**, também com o Supabase ou o Firebase no plano grátis. Substitui o backup manual.
+3. **Revisão semanal guiada** no domingo: o que funcionou, melhores horários (pelas avaliações 😀😐😞) e a meta da próxima semana.
+4. **Editor**: arrastar blocos para reordenar, tabelas, blocos recolhíveis e redimensionar imagens.
+5. **IA**: perguntar sobre *todas* as notas de uma matéria e enviar os prints junto (o Gemini entende imagens).
+6. **Avisos de prazo** das tarefas e provas pelo calendário (como o lembrete diário) e um **calendário** das tarefas.
+7. Renomear uma nota atualizando os `[[links]]` nas outras automaticamente.
+8. Mascote e coleção com desenhos próprios em vez de emojis, e constelações com nome no céu.
 
 ---
 
@@ -99,7 +100,10 @@ SessãoDeFoco  { id, minutes, endedAt, taskId?, intention, rating, note, star }
 Flashcard     { id, noteId, q, a, box (1–6), due (AAAA-MM-DD), seen }
 Distração     { id, text, createdAt }           (o "estacionamento" 💭)
 Perfil        { xp, gamification, achievements, shields, frozen[],
-                quests (missões do dia), planWhen, planWhat }
+                quests (missões do dia), planWhen, planWhat, planTime,
+                petName, stardust, inventory[], equipped {theme, acc, title},
+                pity, wishes, bossWins[] }
+Prova         { id, name, date (AAAA-MM-DD) }
 ```
 
 **Como se relacionam:**
@@ -199,6 +203,26 @@ Cada uma foi inspirada num app que funciona para muita gente e adaptada para est
 
 ---
 
+## 🦊 Mais jogo e mais hábito (v1.4)
+
+Inspirado no **Finch** (mascote que cresce com você), no **Habitica** (chefes), no **YPT** (comparar seu tempo de estudo) e em jogos gacha. A regra foi: **só se ganha recompensa estudando**, e nada exige "cuidar" do jogo. As análises desses apps alertam que, quando o jogo vira o passatempo, o estudo fica de lado.
+
+| Novidade | Como funciona |
+|---|---|
+| 🦊 **Mascote Lumi** | Aparece no Início e **evolui com seu nível**: ovo → filhote → kitsune → kitsune de nove caudas, com aura. **Reage ao seu dia**: sonolento antes de estudar, animado no meio, pulando quando você bate a meta. Toque nele para trocar o nome. |
+| ✦ **Pó de estrela** | Ganho estudando: 25 min de foco = 10 ✦ (+2 com estrela), meta do dia = 15 ✦, 3 missões = 20 ✦, chefe = 80 ✦. Quem atualizou ganha 100 ✦ de presente. |
+| 🌠 **Desejo das Estrelas** | Gacha **só de enfeites**: temas de cor para o app, acessórios para o mascote (🎀 🧣 👓 🎩 🪄 👑…) e títulos. Chances visíveis (comum 60%, raro 30%, épico 9%, lendário 1%), **raro garantido a cada 10 desejos** e item repetido devolve ✦. Toque no ✦ do Início. |
+| 🐉 **Chefe da semana** | Um chefe novo toda segunda (Dragão da Procrastinação, Kraken do Doomscroll…). Cada minuto de foco é 1 de dano. Derrote até domingo para ganhar 80 ✦. A vida dele é ajustável no Perfil (padrão: 150 min/semana). |
+| 👻 **Rival fantasma** | "Você da semana passada": compara seus minutos até agora com os da semana anterior no mesmo ponto. É uma competição sem precisar de amigos nem servidor. |
+| 🎧 **Sons de foco** | Chuva, ruído marrom ou ruído rosa, **gerados pelo próprio navegador** (sem arquivos, funciona offline). Tocam só durante o foco. Escolha na tela Foco. |
+| 📅 **Provas** | Contagem regressiva no Início ("12 dias · Prova de Física"). Fica vermelha a 3 dias. |
+| 🔔 **Lembrete diário** | No plano 📌, escolha o horário e toque em "Adicionar lembrete diário ao calendário". Baixa um arquivo que o celular abre no app de calendário, e ele passa a avisar **todo dia, mesmo com o EstudoQuest fechado**. Sem servidor e sem custo. |
+| 📊 **Sua semana** | Gráfico de minutos por dia no Perfil, comparação com a semana passada e quantas sessões foram 😀. |
+
+<img src="docs/telas/16-inicio-mascote.png" width="200"> <img src="docs/telas/17-desejo.png" width="200"> <img src="docs/telas/18-itens.png" width="200"> <img src="docs/telas/19-perfil-semana.png" width="200">
+
+---
+
 ## ✍️ Editor de notas, aulas e IA (v1.3)
 
 ### Editor estilo Notion (sem Markdown)
@@ -248,6 +272,10 @@ Limites grátis aproximados (o Google muda de tempos em tempos; confira em AI St
 | Tempo fora do app antes de a estrela cair | `app.js` → `CONFIG.starGraceSeconds` |
 | Intervalos dos flashcards | `app.js` → `NEXT_DAYS` |
 | Meta diária e Modo estrela | tela Perfil (ou Foco, para o Modo estrela) |
+| Pó de estrela, custo e chances do Desejo | `game.js` → `GAME.stardust`, `GAME.wishCost`, `GAME.rarity` |
+| Itens do Desejo (temas, acessórios, títulos) | `game.js` → `GAME.items` |
+| Evolução e falas do mascote | `game.js` → `GAME.petStages` e `PET_LINES` |
+| Chefes e títulos por nível | `game.js` → `GAME.bosses` e `GAME.ranks` |
 | Botões da barra e blocos do menu `/` | `editor.js` → `TOOLBAR_ITEMS` e `SLASH_ITEMS` |
 | Cor do marca-texto | `editor.js` → `MARK_COLOR` |
 | Tamanho/qualidade das imagens salvas | `editor.js` → `IMG_MAX_WIDTH` e `IMG_QUALITY` |

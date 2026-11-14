@@ -31,7 +31,7 @@ body {
   margin: 0; background: var(--bg); color: var(--text);
   font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 16px);
-  background-image: radial-gradient(ellipse 120% 60% at 50% 0%, #2a1840 0%, transparent 70%);
+  background-image: radial-gradient(ellipse 120% 60% at 50% 0%, var(--sky-glow, #2a1840) 0%, transparent 70%);
   background-attachment: fixed;
 }
 
@@ -403,3 +403,73 @@ pre.example { background: var(--surface2); padding: .6rem .8rem; border-radius: 
 .steps { padding-left: 1.2rem; }
 .steps li { margin: .3rem 0; }
 dialog { max-height: 90vh; }
+
+/* =====================================================================
+   v1.4: mascote, pó de estrela, desejos, chefe, provas, semana
+   ===================================================================== */
+/* Mascote */
+.pet-btn { background: none; border: 0; padding: 0; cursor: pointer; flex: none; }
+.pet { position: relative; width: 72px; height: 72px; display: grid; place-items: center; border-radius: 50%;
+  background: radial-gradient(circle, #3d2a55, var(--surface2)); box-shadow: 0 0 0 2px #f0c46b55, 0 0 18px #a77ee844; }
+.pet-body { font-size: 2.7rem; line-height: 1; animation: pet-bob 3s ease-in-out infinite; }
+.pet-acc { position: absolute; top: -6px; right: -4px; font-size: 1.5rem; transform: rotate(12deg); filter: drop-shadow(0 2px 3px #0008); }
+.pet.aura { box-shadow: 0 0 0 2px var(--gold), 0 0 26px var(--gold); }
+.pet.mood-esperando .pet-body, .pet.mood-acordando .pet-body { animation-duration: 5s; filter: saturate(.75); }
+.pet.mood-radiante .pet-body { animation: pet-hop 1.2s ease-in-out infinite; }
+.pet.big { width: 130px; height: 130px; margin: 0 auto; }
+.pet.big .pet-body { font-size: 4.8rem; }
+.pet.big .pet-acc { font-size: 2.6rem; }
+@keyframes pet-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes pet-hop { 0%, 100% { transform: translateY(0) scale(1); } 40% { transform: translateY(-8px) scale(1.05); } }
+.pet-say { position: relative; margin: .35rem 0 .5rem; padding: .4rem .65rem; background: var(--surface2); border-radius: 10px; font-size: .86rem; }
+.pet-say::before { content: ""; position: absolute; left: -6px; top: 12px; border: 6px solid transparent; border-left: 0; border-right-color: var(--surface2); }
+.hero { align-items: flex-start; }
+.stardust { font-weight: 800; color: var(--gold); background: #f0c46b1f; border: 1px solid #f0c46b55; padding: .05rem .55rem; border-radius: 999px; white-space: nowrap; }
+.stardust.big { font-size: 1.1rem; padding: .25rem .8rem; }
+
+/* Chefe da semana e rival */
+.boss-emoji { font-size: 2.6rem; line-height: 1; flex: none; animation: pet-bob 2.4s ease-in-out infinite; }
+.bar.hp i { background: linear-gradient(90deg, var(--danger), #f2a65a); }
+.boss.defeated { border-color: var(--gold); }
+.rival { margin: .6rem 0 0; color: var(--muted); }
+.rival strong { color: var(--text); }
+
+/* Provas */
+.exam-list { display: flex; gap: .5rem; overflow-x: auto; padding-bottom: .2rem; }
+.exam { flex: none; display: grid; justify-items: center; min-width: 88px; padding: .45rem .6rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; color: var(--text); cursor: pointer; }
+.exam strong { font-size: 1.5rem; line-height: 1.1; color: var(--gold); }
+.exam small { color: var(--muted); font-size: .7rem; }
+.exam span { font-size: .8rem; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exam.soon { border-color: var(--danger); }
+.exam.soon strong { color: var(--danger); }
+
+/* Desejo das Estrelas */
+.wish-stage { min-height: 170px; display: grid; place-items: center; margin: .8rem 0; }
+.wish-results { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: center; }
+.wish-card { width: 104px; padding: .6rem .4rem; border-radius: 14px; background: var(--surface); border: 2px solid var(--rc); text-align: center; display: grid; gap: .2rem;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--rc) 45%, transparent); animation: wish-flip .6s ease-out both; }
+.wish-card .wc-icon { font-size: 2rem; display: grid; place-items: center; min-height: 2.4rem; }
+.wish-card strong { font-size: .78rem; line-height: 1.2; }
+.wish-card small { font-size: .66rem; color: var(--rc); }
+.wish-card.r-lendario { animation: wish-flip .6s ease-out both, legend-glow 1.6s ease-in-out .6s infinite alternate; }
+@keyframes wish-flip { from { transform: rotateY(90deg) scale(.8); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes legend-glow { to { box-shadow: 0 0 34px var(--rc); } }
+.swatch { display: inline-block; width: 1.8rem; height: 1.8rem; border-radius: 50%; border: 2px solid #fff4; }
+.inv-head { margin: .9rem 0 .4rem; font-size: .9rem; color: var(--muted); }
+.inventory { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: .5rem; }
+.inv-item { position: relative; display: grid; justify-items: center; gap: .15rem; padding: .5rem .3rem; border-radius: 12px; background: var(--surface2);
+  border: 1px solid color-mix(in srgb, var(--rc) 55%, transparent); color: var(--text); cursor: pointer; font: inherit; }
+.inv-item span { font-size: 1.7rem; line-height: 1.2; }
+.inv-item small { font-size: .68rem; line-height: 1.2; text-align: center; }
+.inv-item em { position: absolute; top: -8px; font-size: .62rem; font-style: normal; background: var(--gold); color: #2a1a05; padding: 0 .4rem; border-radius: 999px; }
+.inv-item.on { border: 2px solid var(--gold); }
+.inv-item.locked { opacity: .45; cursor: default; }
+
+/* Gráfico da semana */
+.week-chart { display: flex; gap: .4rem; align-items: flex-end; height: 140px; margin: .4rem 0 .6rem; }
+.wc-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; gap: .2rem; }
+.wc-val { font-size: .7rem; color: var(--muted); min-height: 1em; }
+.wc-bar { flex: 1; width: 100%; max-width: 34px; display: flex; align-items: flex-end; background: var(--surface2); border-radius: 8px; overflow: hidden; }
+.wc-bar i { width: 100%; background: linear-gradient(0deg, var(--btn-from), var(--gold)); border-radius: 8px 8px 0 0; }
+.wc-day { font-size: .75rem; color: var(--muted); }
+.wc-col.today .wc-day { color: var(--gold); font-weight: 700; }

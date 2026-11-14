@@ -16,7 +16,8 @@
      7. Roteador e inicialização
 
    Procure por "✏️ PERSONALIZE" para achar os pontos de customização.
-   O editor de notas fica em editor.js e o assistente de IA em ai.js.
+   O editor de notas fica em editor.js, o assistente de IA em ai.js e
+   o mascote, os Desejos, o chefe e os sons de foco em game.js.
    ===================================================================== */
 
 
@@ -94,15 +95,18 @@ function defaultState() {
     cards: [],    // flashcards lidos das notas: { id, noteId, q, a, box, due, seen }
     parking: [],  // distrações anotadas durante o foco: { id, text, createdAt }
     daily: {},    // contadores por dia, ex.: { '2026-10-30': { reviews: 5, parked: 1 } }
+    exams: [],    // provas: { id, name, date (AAAA-MM-DD) }
     profile: {
       xp: 0, gamification: true, achievements: {},
       shields: 0, frozen: [],       // escudos guardados e dias "salvos" por escudo
       goalDay: '', questBonusDay: '', questDays: 0, quests: null,
-      planWhen: '', planWhat: '',   // plano "quando… então…"
+      planWhen: '', planWhat: '', planTime: '20:00', // plano "quando… então…"
+      petName: 'Lumi', stardust: 0, inventory: [], equipped: { theme: '', acc: '', title: '' }, // ver game.js
+      pity: 0, wishes: 0, bossWins: [], gift14: false,
     },
     // ✏️ PERSONALIZE: tempos padrão do Pomodoro (em minutos). Também dá pra mudar na tela Perfil.
     // dailyGoal = meta mínima do dia (min). Pequena de propósito: o que cria o hábito é não falhar, não a quantidade.
-    settings: { focus: 25, shortBreak: 5, longBreak: 15, cycles: 4, sound: true, dailyGoal: 5, starMode: true, pauseOnMark: false },
+    settings: { focus: 25, shortBreak: 5, longBreak: 15, cycles: 4, sound: true, dailyGoal: 5, starMode: true, pauseOnMark: false, focusSound: 'off', bossHP: 150 },
     timer: { mode: 'focus', running: false, endsAt: null, remaining: 25 * 60, duration: 25 * 60, cycle: 0, taskId: '', intention: '', leftAt: null, fell: false, pendingRating: null },
   };
 }
@@ -152,7 +156,7 @@ function normalize(s) {
   });
   return {
     ...d, ...s, notes,
-    profile: { ...d.profile, ...s.profile },
+    profile: { ...d.profile, ...s.profile, equipped: { ...d.profile.equipped, ...s.profile?.equipped } },
     settings: { ...d.settings, ...s.settings },
     timer: { ...d.timer, ...s.timer },
   };
@@ -183,7 +187,7 @@ function levelInfo(xp) {
 }
 
 const unlockedItems = () => CONFIG.collection.filter(c => c.level <= levelInfo(state.profile.xp).level);
-const avatar = () => (unlockedItems().slice(-1)[0] || CONFIG.collection[0]).emoji;
+const avatar = () => petStage().emoji; // o mascote (game.js)
 
 function addXP(amount, reason) {
   const before = levelInfo(state.profile.xp).level;
@@ -245,6 +249,10 @@ const ACHIEVEMENTS = [
   { id: 'quests-1', icon: '📜', name: 'Missões do Dia', desc: 'Complete as 3 missões de um dia', test: s => (s.profile.questDays || 0) >= 1 },
   { id: 'quests-7', icon: '🗡️', name: 'Aventureiro(a)', desc: 'Complete as missões em 7 dias', test: s => (s.profile.questDays || 0) >= 7 },
   { id: 'cards-50', icon: '🃏', name: 'Memória de Elefante', desc: 'Revise 50 flashcards', test: s => Object.values(s.daily || {}).reduce((a, d) => a + (d.reviews || 0), 0) >= 50 },
+  { id: 'boss-1', icon: '⚔️', name: 'Caçador(a) de Chefes', desc: 'Derrote um chefe da semana', test: s => (s.profile.bossWins || []).length >= 1 },
+  { id: 'boss-4', icon: '🏰', name: 'Um Mês de Vitórias', desc: 'Derrote 4 chefes da semana', test: s => (s.profile.bossWins || []).length >= 4 },
+  { id: 'wish-1', icon: '🌠', name: 'Primeiro Desejo', desc: 'Faça um desejo às estrelas', test: s => (s.profile.wishes || 0) >= 1 },
+  { id: 'legend', icon: '👑', name: 'Sorte Lendária', desc: 'Ganhe um item lendário', test: s => (s.profile.inventory || []).some(id => itemById(id)?.rarity === 'lendario') },
   { id: 'night', icon: '🦉', name: 'Coruja', desc: 'Termine uma sessão depois das 23h', test: s => s.sessions.some(x => { const h = new Date(x.endedAt).getHours(); return h >= 23 || h < 4; }) },
 ];
 
@@ -268,7 +276,8 @@ function onDayProgress() {
   if (p.goalDay === k || minutesOn(k) < state.settings.dailyGoal) return;
   p.goalDay = k;
   const st = streak();
-  toast(`🎯 Meta do dia cumprida! 🔥 ${st} dia${st > 1 ? 's' : ''} seguido${st > 1 ? 's' : ''}`, 'big');
+  addStardust(GAME.stardust.dailyGoal);
+  toast(`🎯 Meta do dia cumprida! 🔥 ${st} dia${st > 1 ? 's' : ''} seguido${st > 1 ? 's' : ''} · +${GAME.stardust.dailyGoal} ✦`, 'big');
   if (st % CONFIG.shieldEvery === 0 && p.shields < CONFIG.maxShields) {
     p.shields++;
     toast('🛡️ Você ganhou um escudo de sequência!', 'big');
@@ -390,7 +399,8 @@ function checkQuests() {
   if (p.questBonusDay !== k && quests.every(q => p.quests.done.includes(q.id))) {
     p.questBonusDay = k;
     p.questDays = (p.questDays || 0) + 1;
-    addXP(CONFIG.xp.questBonus, 'missões do dia 📜');
+    addStardust(GAME.stardust.quests);
+    addXP(CONFIG.xp.questBonus, `missões do dia 📜 · +${GAME.stardust.quests} ✦`);
   }
   save();
 }
@@ -515,6 +525,7 @@ function timerStart() {
   askNotificationPermission();
   updateTimerUI();
   scheduleTick();
+  syncNoise(); // som de foco (precisa começar a partir de um toque)
 }
 
 function timerPause() {
@@ -536,6 +547,7 @@ function timerSetMode(mode, minutes) {
   t.leftAt = null;
   save();
   syncWakeLock();
+  syncNoise();
   updateTimerUI();
 }
 
@@ -556,8 +568,11 @@ function timerFinish(skipped = false) {
     t.cycle++;
     t.intention = '';
     t.pendingRating = ses.id;
-    addXP(Math.max(1, Math.round(CONFIG.xp.focusPer25min * minutes / 25)), star ? 'sessão de foco ⭐' : 'sessão de foco');
+    const dust = Math.max(1, Math.round(GAME.stardust.per25min * minutes / 25)) + (star ? GAME.stardust.starBonus : 0);
+    addStardust(dust);
+    addXP(Math.max(1, Math.round(CONFIG.xp.focusPer25min * minutes / 25)), `${star ? 'sessão de foco ⭐' : 'sessão de foco'} · +${dust} ✦`);
     onDayProgress();
+    checkBoss();
     notify('Sessão concluída! 🎉', 'Hora da pausa. Pode dar uma olhadinha no celular 😉');
     t.mode = t.cycle % state.settings.cycles === 0 ? 'long' : 'short';
   } else {
@@ -573,6 +588,7 @@ function timerFinish(skipped = false) {
   if (currentRoute().name === 'focus') route();
   updateTimerUI();
   syncWakeLock();
+  syncNoise();
   setTimeout(askRating, 600);
 }
 
@@ -651,6 +667,7 @@ let tickHandle = null;
 function scheduleTick() {
   clearTimeout(tickHandle);
   syncWakeLock();
+  if (!state.timer.running) syncNoise(); // para o som quando o timer para
   if (!state.timer.running) return;
   const ms = state.timer.endsAt - now();
   if (ms <= 0) return timerFinish();
@@ -820,14 +837,16 @@ function viewHome(el) {
 
   el.innerHTML = `
     ${gamOn() ? `
-    <a href="#/profile" class="card hero">
-      <div class="avatar">${avatar()}</div>
+    <section class="card hero">
+      <button class="pet-btn" id="petName" title="Mudar o nome">${petHTML()}</button>
       <div class="grow">
-        <div class="row between"><strong>Nível ${li.level}</strong><span class="muted small">${li.current}/${li.need} XP</span></div>
+        <div class="row between"><strong>${esc(p.petName)} <small class="muted">· ${petStage().name}</small></strong><a href="#/wish" class="stardust" title="Pó de estrela: toque para fazer desejos">✦ ${p.stardust}</a></div>
+        <p class="pet-say">${esc(petLine())}</p>
+        <div class="row between small"><a href="#/profile">Nível ${li.level} · ${esc(playerTitle())}</a><span class="muted">${li.current}/${li.need} XP</span></div>
         <div class="bar xp"><i style="width:${(li.current / li.need) * 100}%"></i></div>
         <div class="muted small">🔥 ${st} dia${st === 1 ? '' : 's'} · 🛡️ ${p.shields} · ⭐ ${starCount} no céu</div>
       </div>
-    </a>` : ''}
+    </section>` : ''}
 
     <section class="card start">
       <button class="plan ${p.planWhen ? '' : 'empty'}" id="editPlan">${p.planWhen
@@ -844,7 +863,25 @@ function viewHome(el) {
         <div class="bar goalbar"><i style="width:${Math.min(100, stats.minutes / goal * 100)}%"></i></div>
       </div>
       ${weekHTML()}
+      ${rivalHTML()}
     </section>
+
+    ${gamOn() ? (() => {
+      const b = bossInfo();
+      return `
+    <section class="card boss ${b.defeated ? 'defeated' : ''}">
+      <div class="row">
+        <span class="boss-emoji">${b.defeated ? '🏆' : b.emoji}</span>
+        <div class="grow">
+          <div class="row between"><strong>${b.name}</strong><span class="muted small">${b.defeated ? 'derrotado!' : `${b.daysLeft} dia${b.daysLeft > 1 ? 's' : ''}`}</span></div>
+          <div class="bar hp"><i style="width:${(b.left / b.hp) * 100}%"></i></div>
+          <div class="muted small">${b.defeated ? `Vitória! Você causou ${b.dmg} de dano esta semana. Novo chefe na segunda.` : `❤️ ${b.left}/${b.hp} de vida · cada minuto de foco = 1 de dano · prêmio: ${GAME.stardust.boss} ✦`}</div>
+        </div>
+      </div>
+    </section>`;
+    })() : ''}
+
+    ${examsHTML()}
 
     ${quests.length ? `
     <section class="card">
@@ -883,6 +920,8 @@ function viewHome(el) {
 
   el.querySelectorAll('[data-quick]').forEach(b => b.onclick = () => { timerQuick(Number(b.dataset.quick)); location.hash = '#/focus'; });
   el.querySelector('#editPlan').onclick = planDialog;
+  el.querySelector('#petName')?.addEventListener('click', renamePet);
+  bindExams(el);
 }
 
 // Plano "quando… então…": ligar o estudo a algo que você já faz todo dia.
@@ -894,10 +933,20 @@ function planDialog() {
       <p class="muted small">Ligar o estudo a algo que você já faz todo dia é o jeito mais fácil de virar hábito.</p>
       <label>Quando eu…<input name="when" required value="${esc(p.planWhen)}" placeholder="terminar de jantar"></label>
       <label>…eu vou<input name="what" required value="${esc(p.planWhat)}" placeholder="fazer 1 Pomodoro de Física no quarto"></label>
-      <p class="hint">Dica: crie um alarme no celular nesse horário com o nome “📚 EstudoQuest”.</p>`,
-    onSubmit: d => { p.planWhen = d.when.trim(); p.planWhat = d.what.trim(); save(); route(); },
+      <label>Horário do lembrete<input type="time" name="time" value="${esc(p.planTime || '20:00')}"></label>
+      <button type="button" class="btn" id="icsBtn">🔔 Adicionar lembrete diário ao calendário</button>
+      <p class="hint">Baixa um arquivo de calendário. Abra-o e o celular passa a te lembrar todo dia nesse horário, mesmo com o app fechado.</p>`,
+    onSubmit: d => { p.planWhen = d.when.trim(); p.planWhat = d.what.trim(); p.planTime = d.time || p.planTime; save(); route(); },
     onDelete: p.planWhen ? () => { p.planWhen = p.planWhat = ''; save(); route(); } : null,
   });
+  document.getElementById('icsBtn').onclick = () => {
+    const f = new FormData(document.getElementById('dialogForm'));
+    p.planWhen = (f.get('when') || '').trim() || p.planWhen;
+    p.planWhat = (f.get('what') || '').trim() || p.planWhat;
+    p.planTime = f.get('time') || p.planTime;
+    save();
+    downloadReminderICS();
+  };
 }
 
 /* ===== Notas: lista ===== */
@@ -1397,6 +1446,7 @@ function viewFocus(el) {
           <button class="btn big" id="timerToggle">⏸ Pausar</button>
           <button class="btn primary big" id="parkBtn">💭 Distração</button>
         </div>
+        <div class="row center"><button class="btn small-btn ghost" id="soundBtn">${SOUNDS[s.focusSound]}</button></div>
         <p class="tip">Lembrou de algo ou bateu vontade de pegar o celular? Toque em 💭, anote e volte. Na pausa você vê tudo.</p>
         <div class="row center wrap">
           <a href="#/videos" class="btn ghost">🎬 Aulas</a>
@@ -1406,6 +1456,12 @@ function viewFocus(el) {
       </div>`;
     el.querySelector('#timerToggle').onclick = () => { timerPause(); route(); };
     el.querySelector('#parkBtn').onclick = parkDialog;
+    el.querySelector('#soundBtn').onclick = e => { // troca o som com um toque
+      const keys = Object.keys(SOUNDS);
+      s.focusSound = keys[(keys.indexOf(s.focusSound) + 1) % keys.length];
+      save(); syncNoise();
+      e.currentTarget.textContent = SOUNDS[s.focusSound];
+    };
     el.querySelector('#giveUp').onclick = () => {
       if (confirm('Desistir desta sessão? Ela não vai contar.')) { timerSetMode('focus'); route(); }
     };
@@ -1451,6 +1507,9 @@ function viewFocus(el) {
         </select>
       </label>
       <label class="switch"><input type="checkbox" id="starMode" ${s.starMode ? 'checked' : ''}> ⭐ Modo estrela (tela fica acesa; se sair do app, a estrela cai)</label>
+      <label>🎧 Som de fundo durante o foco
+        <select id="focusSound">${Object.entries(SOUNDS).map(([k, v]) => `<option value="${k}" ${s.focusSound === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+      </label>
     </section>
 
     <section class="card">
@@ -1468,6 +1527,7 @@ function viewFocus(el) {
   el.querySelector('#timerSkip').onclick = () => timerFinish(true);
   el.querySelector('#focusTask').onchange = e => { t.taskId = e.target.value; save(); };
   el.querySelector('#starMode').onchange = e => { s.starMode = e.target.checked; save(); };
+  el.querySelector('#focusSound').onchange = e => { s.focusSound = e.target.value; save(); syncNoise(); };
   const intent = el.querySelector('#intention');
   if (intent) {
     intent.oninput = () => { t.intention = intent.value; saveSoon(); };
@@ -1571,6 +1631,11 @@ function viewProfile(el) {
     <div class="view-head"><h1>${gamOn() ? `${avatar()} Perfil` : '⚙️ Configurações'}</h1></div>
 
     <section class="card">
+      <h3>📊 Sua semana</h3>
+      ${weekChartHTML()}
+    </section>
+
+    <section class="card">
       <div class="row between"><h3>📅 Constância</h3><span class="muted small">🔥 ${streak()} dias · 🛡️ ${state.profile.shields}/${CONFIG.maxShields}</span></div>
       ${calendarHTML()}
       <p class="muted small">A cada ${CONFIG.shieldEvery} dias seguidos você ganha um 🛡️ escudo. Se perder um dia, ele salva sua sequência sozinho. A regra de ouro: <strong>nunca falhe dois dias seguidos</strong>.</p>
@@ -1612,6 +1677,7 @@ function viewProfile(el) {
         <label>Pausa longa<input type="number" min="1" max="60" data-set="longBreak" value="${s.longBreak}"></label>
         <label>Ciclos até pausa longa<input type="number" min="1" max="12" data-set="cycles" value="${s.cycles}"></label>
         <label>🎯 Meta diária (min)<input type="number" min="1" max="240" data-set="dailyGoal" value="${s.dailyGoal}"></label>
+        <label>🐉 Vida do chefe (min/semana)<input type="number" min="30" max="3000" data-set="bossHP" value="${s.bossHP}"></label>
       </div>
     </section>
 
@@ -1642,7 +1708,7 @@ function viewProfile(el) {
     const v = Math.max(1, Number(inp.value) || 1);
     s[inp.dataset.set] = v;
     const t = state.timer;
-    if (inp.dataset.set !== 'dailyGoal' && !t.running && t.remaining === t.duration) timerSetMode(t.mode); // aplica o novo tempo
+    if (!['dailyGoal', 'bossHP'].includes(inp.dataset.set) && !t.running && t.remaining === t.duration) timerSetMode(t.mode); // aplica o novo tempo
     save();
   });
   const saveAI = () => aiSaveConfig({ ...aiConfig(), key: el.querySelector('#aiKey').value.trim(), model: el.querySelector('#aiModel').value });
@@ -1675,13 +1741,13 @@ function viewProfile(el) {
       if (!confirm('Importar vai SUBSTITUIR os dados atuais por os do arquivo. Continuar?')) return;
       const { images = {}, ...rest } = data;
       for (const [k, url] of Object.entries(images)) await imgPut(k, await dataURLToBlob(url));
-      state = normalize(rest); save(); toast('Backup importado ✅'); route(); updateHeader();
+      state = normalize(rest); save(); applyTheme(); toast('Backup importado ✅'); route(); updateHeader();
     } catch (err) { alert('Esse arquivo não parece um backup do EstudoQuest.'); }
   };
   el.querySelector('#resetBtn').onclick = () => {
     if (!confirm('Apagar TODAS as notas, aulas, tarefas e XP deste aparelho? Não dá pra desfazer.')) return;
     localStorage.removeItem(STORAGE_KEY);
-    state = seed(defaultState()); save(); location.hash = '#/home'; route();
+    state = seed(defaultState()); save(); applyTheme(); location.hash = '#/home'; route();
   };
 }
 
@@ -1714,6 +1780,7 @@ function route() {
     case 'search': viewSearch(el, a || ''); break;
     case 'profile': viewProfile(el); break;
     case 'review': viewReview(el); break;
+    case 'wish': viewWish(el); break;
     default: viewHome(el);
   }
   document.querySelectorAll('.tabbar a').forEach(t => t.classList.toggle('on', t.dataset.tab === name || (name === 'home' && t.dataset.tab === 'home')));
@@ -1765,6 +1832,14 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
   navigator.serviceWorker.register('sw.js').catch(() => { /* sem modo offline, tudo bem */ });
 }
 
+applyTheme();
+// Presente de boas-vindas da v1.4: pó de estrela para os primeiros desejos.
+if (!state.profile.gift14) {
+  state.profile.gift14 = true;
+  state.profile.stardust += GAME.stardust.welcomeGift;
+  setTimeout(() => toast(`🎁 Presente: ${GAME.stardust.welcomeGift} ✦ de pó de estrela! Toque no ✦ do Início para fazer desejos.`, 'big'), 1500);
+}
+checkBoss();
 checkStarFall(); // o app foi fechado no meio de um foco?
 applyShields();
 save();
