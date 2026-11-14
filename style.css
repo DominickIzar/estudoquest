@@ -591,3 +591,53 @@ fieldset { border: 1px solid var(--border); border-radius: 10px; margin: 0 0 .7r
 legend { font-size: .85rem; color: var(--muted); padding: 0 .3rem; }
 .check-row { display: flex; gap: .5rem; align-items: center; color: var(--text); margin: .25rem 0; font-size: .9rem; }
 .check-row input { width: 18px; height: 18px; accent-color: var(--accent); flex: none; margin: 0; }
+
+/* =====================================================================
+   v1.7: Ficha do personagem (atributos e personalização)
+   ===================================================================== */
+.char-sheet { background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 14%, var(--surface)), var(--surface) 55%); border-color: color-mix(in srgb, var(--gold) 30%, var(--border)); }
+.char-top { display: flex; gap: 1rem; align-items: center; }
+.char-name { margin: 0; font-size: 1.25rem; }
+.char-class { margin: .2rem 0 0; }
+.char-h { margin: 1.1rem 0 .5rem; font-size: .95rem; color: var(--gold); letter-spacing: .02em; }
+.char-stats { margin: -.6rem 0 1rem; text-align: center; }
+
+/* Atributos */
+.attrs { display: grid; gap: .5rem; }
+.attr { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: .55rem .7rem; }
+.attr summary { display: flex; gap: .7rem; align-items: center; cursor: pointer; list-style: none; }
+.attr summary::-webkit-details-marker { display: none; }
+.attr summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 8px; }
+.attr-icon { font-size: 1.6rem; width: 2.2rem; text-align: center; flex: none; }
+.attr-lv { font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+.attr-bar { display: block; height: 7px; margin: .3rem 0 .25rem; }
+.a-knowledge .attr-bar i { background: linear-gradient(90deg, #6aa8ff, var(--accent)); }
+.a-discipline .attr-bar i { background: linear-gradient(90deg, var(--danger), var(--accent2)); }
+.a-mastery .attr-bar i { background: linear-gradient(90deg, var(--accent2), var(--gold)); }
+.attr-parts { list-style: none; padding: .5rem 0 0 2.9rem; margin: 0; display: grid; gap: .25rem; font-size: .84rem; }
+.attr-parts li { display: flex; justify-content: space-between; gap: .5rem; }
+.attr[open] { border-color: var(--accent); }
+
+/* Personalização */
+.cust-row { margin: .6rem 0; }
+.cust-label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: .3rem; }
+.cust-options { display: flex; gap: .4rem; overflow-x: auto; padding-bottom: .3rem; scrollbar-width: thin; }
+.cust-opt { flex: none; display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .7rem; border-radius: 999px; background: var(--surface2);
+  border: 1px solid color-mix(in srgb, var(--rc, var(--border)) 60%, transparent); color: var(--text); font: inherit; font-size: .85rem; cursor: pointer; }
+.cust-opt .swatch { width: 1rem; height: 1rem; border-width: 1px; }
+.cust-opt.on { border: 2px solid var(--gold); box-shadow: 0 0 10px #f0c46b44; }
+.cust-opt.more { color: var(--accent); border-style: dashed; }
+.species { display: grid; grid-template-columns: repeat(4, 1fr); gap: .4rem; }
+.species-opt { position: relative; display: grid; justify-items: center; gap: .15rem; padding: .5rem .2rem; border-radius: 12px; background: var(--surface2); border: 1px solid var(--border); color: var(--text); cursor: pointer; font: inherit; }
+.species-opt .sp-emoji { font-size: 1.8rem; line-height: 1.2; }
+.species-opt small { font-size: .66rem; line-height: 1.2; text-align: center; }
+.species-opt em { font-style: normal; font-size: .62rem; color: var(--muted); }
+.species-opt.on { border: 2px solid var(--gold); box-shadow: 0 0 12px #f0c46b44; }
+.species-opt.locked { opacity: .5; cursor: not-allowed; }
+@media (max-width: 380px) { .species { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) {
+  .char-top .pet.big { width: 92px; height: 92px; }
+  .char-top .pet.big .pet-body { font-size: 3.3rem; }
+  .char-top .pet.big .pet-acc { font-size: 1.9rem; }
+}
+.char-top .row.small > span { white-space: nowrap; }

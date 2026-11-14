@@ -53,7 +53,8 @@ const GAME = {
     { id: 'tit-lenda', type: 'title', rarity: 'lendario', name: 'Lenda das Estrelas' },
   ],
 
-  // ✏️ PERSONALIZE: evolução do mascote por nível.
+  // ✏️ PERSONALIZE: em que nível o mascote evolui. O desenho e o nome de cada
+  // estágio dependem da espécie escolhida (ver SPECIES em character.js).
   petStages: [
     { level: 1, emoji: '🥚', name: 'ovo estelar' },
     { level: 3, emoji: '🐱', name: 'filhote' },
@@ -92,7 +93,10 @@ const itemById = id => GAME.items.find(i => i.id === id);
 /* ---------- Mascote ---------- */
 function petStage() {
   const lv = levelInfo(state.profile.xp).level;
-  return [...GAME.petStages].reverse().find(s => lv >= s.level);
+  let i = 0;
+  GAME.petStages.forEach((s, k) => { if (lv >= s.level) i = k; });
+  const sp = SPECIES[state.profile.species] || SPECIES.kitsune;
+  return { ...GAME.petStages[i], emoji: sp.emojis[i] || GAME.petStages[i].emoji, name: sp.stages[i] || GAME.petStages[i].name };
 }
 
 function petMood() {

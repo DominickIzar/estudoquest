@@ -3,8 +3,8 @@
    guardada e, ao mesmo tempo, baixa a versão nova para a próxima abertura.
    ✏️ Quando mudar o código e publicar, recarregue o app 2 vezes para ver a mudança
    (ou troque o número em CACHE abaixo para forçar). */
-const CACHE = 'estudoquest-v7';
-const FILES = ['./', 'index.html', 'style.css', 'editor.js', 'ai.js', 'game.js', 'skills.js', 'app.js', 'manifest.webmanifest', 'icon.svg'];
+const CACHE = 'estudoquest-v8';
+const FILES = ['./', 'index.html', 'style.css', 'editor.js', 'ai.js', 'game.js', 'skills.js', 'character.js', 'app.js', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));

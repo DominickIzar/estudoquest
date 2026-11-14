@@ -46,7 +46,7 @@ Each phase ships on its own, keeps all features working, and adds an end-to-end 
 - **Building trees:** auto-generate from lessons and notes (instant, no AI), suggest a concept map with AI (optional), or edit by hand (title, icon, links, prerequisites, with cycle protection).
 - **Connections:** chips on lesson and note pages, a "next step" line on home, a node challenge quiz, AI flashcard creation for a node, rewards (XP + ✦), achievements and a daily quest.
 
-### Phase 2: Character attributes
+### Phase 2: Character attributes ✅ (v1.7: character sheet at the top of Profile, with archetype class, species unlocked at attribute level 3, and equipping accessory/theme/title)
 - **Knowledge:** nodes discovered and practiced, cards created.
 - **Mastery:** nodes mastered, weighted by depth in the tree.
 - **Discipline:** focus minutes, shields **not** consumed, quests completed. Uses only positive signals: it can rise but never fall.

@@ -17,8 +17,9 @@
 
    Procure por "✏️ PERSONALIZE" para achar os pontos de customização.
    O editor de notas fica em editor.js, o assistente de IA em ai.js,
-   o mascote, os Desejos, o chefe e os sons de foco em game.js e as
-   árvores de conhecimento em skills.js.
+   o mascote, os Desejos, o chefe e os sons de foco em game.js, as
+   árvores de conhecimento em skills.js e a ficha do personagem
+   (atributos e personalização) em character.js.
    ===================================================================== */
 
 
@@ -107,6 +108,7 @@ function defaultState() {
       planWhen: '', planWhat: '', planTime: '20:00', // plano "quando… então…"
       petName: 'Lumi', stardust: 0, inventory: [], equipped: { theme: '', acc: '', title: '' }, // ver game.js
       pity: 0, wishes: 0, bossWins: [], gift14: false,
+      species: 'kitsune', speciesSeen: [], attrPeak: { knowledge: 0, discipline: 0, mastery: 0 }, // ver character.js
     },
     // ✏️ PERSONALIZE: tempos padrão do Pomodoro (em minutos). Também dá pra mudar na tela Perfil.
     // dailyGoal = meta mínima do dia (min). Pequena de propósito: o que cria o hábito é não falhar, não a quantidade.
@@ -160,7 +162,7 @@ function normalize(s) {
   });
   return {
     ...d, ...s, notes,
-    profile: { ...d.profile, ...s.profile, equipped: { ...d.profile.equipped, ...s.profile?.equipped } },
+    profile: { ...d.profile, ...s.profile, equipped: { ...d.profile.equipped, ...s.profile?.equipped }, attrPeak: { ...d.profile.attrPeak, ...s.profile?.attrPeak } },
     settings: { ...d.settings, ...s.settings },
     timer: { ...d.timer, ...s.timer },
   };
@@ -266,6 +268,9 @@ const ACHIEVEMENTS = [
     for (const n of s.skillNodes || []) (bySub[n.subject] ||= []).push(n);
     return Object.values(bySub).some(ns => ns.length >= 3 && ns.every(n => n.peak === 'mastered'));
   } },
+  { id: 'attr-3', icon: '⭐', name: 'Especialista', desc: 'Leve um atributo ao nível 3', test: () => Object.keys(ATTRS).some(k => attrLevel(attrPoints(k)).level >= 3) },
+  { id: 'attr-all', icon: '⚖️', name: 'Equilíbrio', desc: 'Leve os três atributos ao nível 3', test: () => Object.keys(ATTRS).every(k => attrLevel(attrPoints(k)).level >= 3) },
+  { id: 'species', icon: '🥚', name: 'Nova Espécie', desc: 'Desbloqueie uma espécie de companheiro', test: s => (s.profile.speciesSeen || []).length >= 1 },
   { id: 'night', icon: '🦉', name: 'Coruja', desc: 'Termine uma sessão depois das 23h', test: s => s.sessions.some(x => { const h = new Date(x.endedAt).getHours(); return h >= 23 || h < 4; }) },
 ];
 
@@ -1751,6 +1756,11 @@ function viewProfile(el) {
   el.innerHTML = `
     <div class="view-head"><h1>${gamOn() ? `${avatar()} Perfil` : '⚙️ Configurações'}</h1></div>
 
+    ${gamOn() ? `
+    ${characterSheetHTML()}
+    <p class="muted small char-stats">${state.sessions.length} sess${state.sessions.length === 1 ? 'ão' : 'ões'} de foco · ${Math.round(focusMinutes(state) / 60 * 10) / 10} h no total</p>
+` : ''}
+
     <section class="card">
       <h3>📊 Sua semana</h3>
       ${weekChartHTML()}
@@ -1763,11 +1773,6 @@ function viewProfile(el) {
     </section>
 
     ${gamOn() ? `
-    <section class="card">
-      <div class="row between"><strong>Nível ${li.level}</strong><span class="muted small">${state.profile.xp} XP no total</span></div>
-      <div class="bar xp"><i style="width:${(li.current / li.need) * 100}%"></i></div>
-      <p class="muted small">Faltam ${li.need - li.current} XP para o próximo nível · ${state.sessions.length} sess${state.sessions.length === 1 ? 'ão' : 'ões'} · ${Math.round(focusMinutes(state) / 60 * 10) / 10} h de foco</p>
-    </section>
 
     <section class="card">
       <div class="row between"><h3>✨ Seu céu</h3><span class="muted small">${state.sessions.filter(x => x.star).length} estrelas</span></div>
@@ -1822,6 +1827,7 @@ function viewProfile(el) {
       </div>
     </section>`;
 
+  if (gamOn()) bindCharacterSheet(el);
   el.querySelector('#gamToggle').onchange = e => { state.profile.gamification = e.target.checked; save(); updateHeader(); route(); };
   el.querySelector('#soundToggle').onchange = e => { s.sound = e.target.checked; save(); };
   el.querySelector('#starToggle').onchange = e => { s.starMode = e.target.checked; save(); };
@@ -1892,6 +1898,7 @@ function route() {
   const el = document.getElementById('view');
   if (location.hash !== lastPath) { window.scrollTo(0, 0); lastPath = location.hash; }
   checkSkills(); // algum conceito subiu de estágio desde a última tela?
+  checkAttributes(); // atributos só sobem (ver character.js)
 
   switch (name) {
     case 'notes': a ? viewNote(el, a) : viewNotes(el); break;

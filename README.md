@@ -43,6 +43,7 @@ Um app de estudos que junta num só lugar **caderno de notas**, **videoaulas com
 | `editor.js` | O editor de notas estilo Notion (barra de formatação, menu "/", links, imagens) |
 | `ai.js` | O assistente de IA (Gemini, plano grátis) |
 | `skills.js` | Árvores de conhecimento: conceitos por matéria, estágios Descoberto → Praticado → Dominado |
+| `character.js` | Ficha do personagem: atributos (Conhecimento, Disciplina, Maestria), classe e personalização |
 | `game.js` | Mascote, pó de estrela e Desejos, chefe da semana, rival, sons de foco, provas, lembrete no calendário |
 | `sw.js` + `manifest.webmanifest` + `icon.svg` | O que faz o app ser instalável e abrir offline |
 
@@ -67,6 +68,7 @@ O player oficial do YouTube permite ler "em que segundo o vídeo está", e é is
 - **Foco**: Pomodoro (foco, pausa curta, pausa longa), botão **"Só 5 minutinhos"** para vencer a preguiça de começar, vincular a sessão a uma tarefa, som e notificação ao terminar. O timer continua certo mesmo se você trocar de tela.
 - **Busca única** no topo: procura em notas, aulas (inclusive nas anotações com tempo) e tarefas.
 - **Gamificação (pode ser desligada no Perfil)**: XP, níveis, sequência de dias 🔥, 18 conquistas e uma coleção de 13 itens.
+- **Ficha do personagem (v1.7)**: veja a seção [Ficha do personagem](#-ficha-do-personagem-v17).
 - **Árvores de conhecimento (v1.6)**: veja a seção [Árvores de conhecimento](#-árvores-de-conhecimento-v16). Plano das próximas fases em [`docs/RPG-ROADMAP.md`](docs/RPG-ROADMAP.md).
 - **IA que assiste as aulas e quiz interativo (v1.5)**: veja a seção [IA que assiste suas videoaulas](#-ia-que-assiste-suas-videoaulas-v15).
 - **Mascote, Desejos e chefe da semana (v1.4)**: veja a seção [Mais jogo e mais hábito](#-mais-jogo-e-mais-hábito-v14).
@@ -108,6 +110,7 @@ Perfil        { xp, gamification, achievements, shields, frozen[],
                 pity, wishes, bossWins[] }
 Prova         { id, name, date (AAAA-MM-DD) }
 Quiz feito    { at, score, total, title, videoId?, noteId?, nodeId? }
+Perfil (v1.7) + species, speciesSeen[], attrPeak { knowledge, discipline, mastery } (recordes)
 Conceito      { id, subject, title, icon, noteIds[], videoIds[], requires[] (pré-requisitos),
                 order, peak (maior estágio já alcançado), peakAt }
 Flashcard.correct  quantas vezes você acertou (cards antigos usam a caixa como estimativa)
@@ -208,6 +211,27 @@ Cada uma foi inspirada num app que funciona para muita gente e adaptada para est
 - Ative o **Modo Foco** do celular durante o Pomodoro (Android: Bem-estar digital; iPhone: Ajustes → Foco). O app não consegue bloquear outros apps sozinho.
 - Crie um **alarme** no horário do seu plano com o nome "📚 EstudoQuest".
 - Coloque o ícone do app na **primeira tela** do celular, no lugar de uma rede social.
+
+---
+
+## 🧙 Ficha do personagem (v1.7)
+
+Fase 2 do modo RPG. No topo do **Perfil** aparece a ficha do seu personagem:
+
+- **Seu companheiro** (toque para mudar o nome), o **nível**, o **título** e uma **classe** que muda conforme seu atributo mais forte: 🦉 Sábio(a) Explorador(a), 🥋 Monge da Disciplina, 🔮 Arcano(a) da Memória ou ⚖️ Aventureiro(a) Equilibrado(a).
+- **Três atributos**, calculados do que você realmente fez (toque em cada um para ver de onde vem cada ponto):
+
+| Atributo | Pontos vêm de |
+|---|---|
+| 📚 **Conhecimento** | conceitos descobertos na árvore, flashcards criados, aulas concluídas, notas com conteúdo |
+| 🔥 **Disciplina** | minutos de foco, dias com a meta cumprida, chefes derrotados, dias com todas as missões |
+| 👑 **Maestria** | conceitos praticados e dominados, acertos em flashcards, acertos em quizzes |
+
+- **Só sobem:** o maior valor fica guardado. Apagar uma nota ou esquecer um card não tira pontos.
+- **Personalizar:** escolha a **espécie** do companheiro (🦊 Kitsune, 🦉 Coruja sábia, 🐺 Lobo disciplinado, 🐉 Dragão arcano), o **acessório**, o **tema de cor** e o **título** que você ganhou nos Desejos. As três espécies novas **se desbloqueiam aprendendo**: cada uma pede o nível 3 de um atributo.
+- Quem já usava o app começa com os atributos calculados do histórico. Há 3 conquistas novas.
+
+<img src="docs/telas/30-ficha.png" width="200"> <img src="docs/telas/31-ficha-personalizada.png" width="200"> <img src="docs/telas/32-personalizar.png" width="200">
 
 ---
 
@@ -334,6 +358,9 @@ Limites grátis aproximados (o Google muda de tempos em tempos; confira em AI St
 | Tamanho/qualidade das imagens salvas | `editor.js` → `IMG_MAX_WIDTH` e `IMG_QUALITY` |
 | Botões e "jeito" do assistente de IA | `ai.js` → `AI_ACTIONS` e `AI_SYSTEM` |
 | Regras de cada estágio da árvore | `skills.js` → `SKILL_RULES` |
+| De onde vêm os pontos dos atributos | `character.js` → `ATTRS` |
+| Espécies do companheiro e como desbloquear | `character.js` → `SPECIES` |
+| Velocidade de subir nível de atributo | `character.js` → `attrLevel` (40 e 30) |
 | Recompensas ao subir de estágio | `skills.js` → `SKILL_REWARDS` |
 | Botões da aba ✨ IA das aulas | `ai.js` → `VIDEO_AI_ACTIONS` |
 | Quantidade e estilo das perguntas do quiz | `ai.js` → `QUIZ_PROMPT` |
