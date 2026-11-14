@@ -84,15 +84,17 @@ function nodeProgress(node, idx) {
   // c.correct conta acertos; cards antigos (antes da v1.6) usam a caixa como estimativa.
   const correct = res.cards.reduce((a, c) => a + (c.correct ?? Math.max(0, (c.box || 1) - 1)), 0);
   const best = res.quizzes.reduce((m, q) => Math.max(m, q.total ? q.score / q.total : 0), 0);
+  const labs = (state.labs || []).filter(l => l.nodeId === node.id && l.attempts.length); // experimentos do laboratório (lab.js)
+  const labBest = labs.reduce((m, l) => Math.max(m, l.best / 100), 0);
   const n = res.cards.length;
   const strong = res.cards.filter(c => (c.box || 1) >= R.strongBox).length;
   const deep = res.cards.filter(c => (c.box || 1) >= R.deepBox).length;
   const due = res.cards.filter(c => c.due <= idx.today).length;
 
-  const disc = watched || wrote || correct > 0 || res.quizzes.length > 0;
-  const prac = correct >= R.practicedCorrect || best >= R.practicedQuiz;
+  const disc = watched || wrote || correct > 0 || res.quizzes.length > 0 || labs.length > 0;
+  const prac = correct >= R.practicedCorrect || best >= R.practicedQuiz || labBest >= R.practicedQuiz;
   const strongOk = n >= R.masteredMinCards && strong / n >= R.masteredShare;
-  const proofOk = best >= R.masteredQuiz || (n > 0 && deep / n >= R.masteredShare);
+  const proofOk = best >= R.masteredQuiz || labBest >= R.masteredQuiz || (n > 0 && deep / n >= R.masteredShare);
   const live = strongOk && proofOk ? 'mastered' : prac ? 'practiced' : disc ? 'discovered' : 'none';
   const status = stageRank(node.peak) > stageRank(live) ? node.peak : live;
 
@@ -103,7 +105,7 @@ function nodeProgress(node, idx) {
     : 0;
   const ring = status === 'mastered' ? 1 : (stageRank(status) + partial) / 3;
 
-  return { status, live, res, watched, wrote, correct, best, n, strong, deep, due, strongOk, proofOk, ring,
+  return { status, live, res, watched, wrote, correct, best, labBest, n, strong, deep, due, strongOk, proofOk, ring,
     needsReview: stageRank(node.peak) > stageRank(live) || due > 0 };
 }
 
@@ -115,7 +117,7 @@ function nodeHint(p) {
   if (p.n < R.masteredMinCards) return `Crie flashcards (${p.n}/${R.masteredMinCards})`;
   if (p.status === 'discovered') return 'Pratique: revise os cards ou faça o desafio';
   if (p.status === 'practiced' && !p.strongOk) return 'Revise de novo nos próximos dias';
-  if (p.status === 'practiced' && !p.proofOk) return `Passe no desafio do nó (${Math.round(R.masteredQuiz * 100)}%)`;
+  if (p.status === 'practiced' && !p.proofOk) return `Passe no desafio ou num experimento (${Math.round(R.masteredQuiz * 100)}%)`;
   return 'Dominado! Revise quando os cards voltarem';
 }
 
@@ -285,6 +287,8 @@ function nodeTargetNote(node) {
 }
 
 function appendToNote(note, html) {
+  // Nota antiga só com texto: converte o texto antes, para não perder nada.
+  if (!note.html && (note.body || '').trim()) note.html = mdToHtml(note.body, note);
   note.html = (note.html || '') + sanitizeHTML(html);
   note.body = textOfHtml(note.html);
   note.updatedAt = now();
@@ -339,7 +343,7 @@ function viewSkills(el) {
   const idx = skillIndex();
   const subs = skillSubjects();
   el.innerHTML = `
-    <div class="view-head"><h1>🌳 Árvores</h1><button class="btn" id="newSubject">+ Matéria</button></div>
+    <div class="view-head"><h1>🌳 Árvores</h1><div class="row"><a class="btn" href="#/lab" title="Laboratório de experimentos">🧪 Lab</a><button class="btn" id="newSubject">+ Matéria</button></div></div>
     <details class="card skill-help">
       <summary>Como a árvore funciona?</summary>
       <p>Cada matéria vira uma árvore de <strong>conceitos</strong>. Cada conceito passa por 3 estágios, e só sobe com <strong>provas de aprendizado</strong>:</p>
@@ -521,6 +525,8 @@ function viewSkillNode(el, subject, id) {
         ${p.n < R.masteredMinCards * 2 && (p.res.notes.some(n => (n.body || '').trim()) || p.res.videos.some(v => v.kind === 'youtube'))
           ? '<button class="btn" id="nodeCards">✨ Criar flashcards com IA (a partir das suas notas/aula)</button>' : ''}
         <button class="btn" id="nodeQuiz">⚔️ Desafio do conceito (quiz)</button>
+        <button class="btn" id="nodeLab">🧪 Experimento prático <small>(${LAB.levels[labLevelFor(node)].icon} ${LAB.levels[labLevelFor(node)].name})</small></button>
+        ${labsOfNode(node.id).length ? `<div class="lab-list">${labsOfNode(node.id).slice(-3).reverse().map(labCardHTML).join('')}</div>` : ''}
       </div>
     </section>
 
@@ -528,10 +534,10 @@ function viewSkillNode(el, subject, id) {
       <h3>📈 Progresso</h3>
       ${stageBlock('discovered', check(p.watched, 'Assistir a pelo menos 10% de uma aula ligada') + check(p.wrote, 'ou escrever na nota ligada'))}
       ${stageBlock('practiced', check(p.correct >= R.practicedCorrect, `Lembrar flashcards corretamente (${Math.min(p.correct, R.practicedCorrect)}/${R.practicedCorrect})`, pct(p.correct, R.practicedCorrect))
-        + check(p.best >= R.practicedQuiz, `ou tirar ${Math.round(R.practicedQuiz * 100)}% num quiz (melhor: ${Math.round(p.best * 100)}%)`))}
+        + check(p.best >= R.practicedQuiz || p.labBest >= R.practicedQuiz, `ou tirar ${Math.round(R.practicedQuiz * 100)}% num quiz ou experimento (melhor: ${Math.round(Math.max(p.best, p.labBest) * 100)}%)`))}
       ${stageBlock('mastered', check(p.n >= R.masteredMinCards, `Ter pelo menos ${R.masteredMinCards} flashcards (${p.n})`, pct(p.n, R.masteredMinCards))
         + check(p.strongOk, `${Math.round(R.masteredShare * 100)}% deles lembrados em 2 dias diferentes (${strongPct}%)`, pct(strongPct, R.masteredShare * 100))
-        + check(p.proofOk, `Passar no desafio com ${Math.round(R.masteredQuiz * 100)}% (melhor: ${Math.round(p.best * 100)}%) ou lembrar em 3 dias diferentes (${deepPct}%)`))}
+        + check(p.proofOk, `Passar no desafio ou num experimento com ${Math.round(R.masteredQuiz * 100)}% (melhor: ${Math.round(Math.max(p.best, p.labBest) * 100)}%) ou lembrar em 3 dias diferentes (${deepPct}%)`))}
       <p class="muted small">Os cards só podem ser revisados quando vencem, então o domínio vem com o tempo, não com cliques.</p>
     </section>
 
@@ -542,6 +548,7 @@ function viewSkillNode(el, subject, id) {
 
   el.querySelector('#editNode').onclick = () => nodeEditDialog(node);
   el.querySelector('#nodeQuiz').onclick = () => nodeChallenge(node);
+  el.querySelector('#nodeLab').onclick = e => startLab({ subject: node.subject, nodeId: node.id, level: labLevelFor(node) }, e.currentTarget);
   el.querySelector('#nodeCards')?.addEventListener('click', e => nodeAICards(node, e.currentTarget));
   el.querySelector('#nodeNewNote')?.addEventListener('click', () => {
     const n = nodeTargetNote(node);

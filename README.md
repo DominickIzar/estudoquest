@@ -44,6 +44,7 @@ Um app de estudos que junta num só lugar **caderno de notas**, **videoaulas com
 | `ai.js` | O assistente de IA (Gemini, plano grátis) |
 | `skills.js` | Árvores de conhecimento: conceitos por matéria, estágios Descoberto → Praticado → Dominado |
 | `character.js` | Ficha do personagem: atributos (Conhecimento, Disciplina, Maestria), classe e personalização |
+| `lab.js` | Laboratório de experimentos: casos práticos criados pela IA, com correção construtiva |
 | `subjects.js` | Matérias e cursos: renomear em todo o app, minutos estudados por matéria |
 | `discovery.js` | Mistério da aula (a IA esconde uma pergunta num trecho), Crônica de Lumi e relíquias |
 | `campaign.js` | Modo campanha: capítulos, checkpoints, missões e desafio final por matéria |
@@ -72,6 +73,7 @@ O player oficial do YouTube permite ler "em que segundo o vídeo está", e é is
 - **Foco**: Pomodoro (foco, pausa curta, pausa longa), botão **"Só 5 minutinhos"** para vencer a preguiça de começar, vincular a sessão a uma tarefa, som e notificação ao terminar. O timer continua certo mesmo se você trocar de tela.
 - **Busca única** no topo: procura em notas, aulas (inclusive nas anotações com tempo) e tarefas.
 - **Gamificação (pode ser desligada no Perfil)**: XP, níveis, sequência de dias 🔥, 18 conquistas e uma coleção de 13 itens.
+- **Laboratório de experimentos (v1.11)**: veja a seção [Laboratório](#-laboratório-de-experimentos-v111).
 - **Matérias, cursos e mistérios (v1.10)**: veja a seção [Matérias, cursos e descobertas](#-matérias-cursos-e-descobertas-v110).
 - **Modo campanha (v1.9)**: veja a seção [Modo campanha](#️-modo-campanha-v19).
 - **Batalhas e equipamento (v1.8)**: veja a seção [Batalhas e equipamento](#️-batalhas-e-equipamento-v18).
@@ -117,6 +119,7 @@ Perfil        { xp, gamification, achievements, shields, frozen[],
                 pity, wishes, bossWins[] }
 Prova         { id, name, date (AAAA-MM-DD) }
 Quiz feito    { at, score, total, title, videoId?, noteId?, nodeId? }
+Experimento   labs[] = { id, subject, nodeId, level, scenario {title, context, data[], question, hints[]}, hintsShown, attempts[{answer, score, verdict, strengths, improvements, solution, alternatives, flashcards}], best, draft }
 Matérias      subjectsMeta[matéria] = { program (curso) } · Sessão de foco ganhou "subject"
 Mistério      Videoaula.mystery = { question, answer, explanation, hint, t, start, end, status, attempts } + mysteriesSolved
 Crônica       discovery = { fragments[] }
@@ -225,6 +228,22 @@ Cada uma foi inspirada num app que funciona para muita gente e adaptada para est
 - Ative o **Modo Foco** do celular durante o Pomodoro (Android: Bem-estar digital; iPhone: Ajustes → Foco). O app não consegue bloquear outros apps sozinho.
 - Crie um **alarme** no horário do seu plano com o nome "📚 EstudoQuest".
 - Coloque o ícone do app na **primeira tela** do celular, no lugar de uma rede social.
+
+---
+
+## 🧪 Laboratório de experimentos (v1.11)
+
+Fase 6, a última do modo RPG. Em 🌳 Árvores → 🧪 Lab, ou no botão "🧪 Experimento prático" de cada conceito:
+
+- **Casos práticos:** a IA monta um **cenário realista com dados** (ex.: "Dona Ana importa café e quer definir o preço de venda") usando as suas notas como base. Você resolve **com suas palavras, mostrando o raciocínio**.
+- **Três níveis:** 🌱 Aprendiz, ⚗️ Praticante e 🔥 Mestre. O padrão segue o estágio do conceito (descoberto → Aprendiz, praticado → Praticante, dominado → Mestre).
+- **💡 Dicas em escada:** 3 dicas, da mais leve à mais específica. Não tiram nada.
+- **Retorno construtivo:** ✅ o que você acertou, 🔧 o que melhorar e uma nota com **crédito parcial** (o raciocínio conta, não só o número final). A **resolução completa** e os **🔀 outros caminhos** ficam fechados até você querer ver, para dar chance de revisar antes.
+- **✍️ Revise e reenvie** quantas vezes quiser: vale a melhor nota, e o rascunho fica salvo se você sair da tela. O prêmio vem uma vez por faixa (parcial e resolvido).
+- **🃏 O que faltou vira flashcard** com um toque, e dá para **📝 salvar** o caso e a resolução na nota do conceito.
+- **Conta como aprendizado de verdade:** um experimento com 60% ou mais conta como prática do conceito. Com 80% ou mais, ele **substitui o quiz** na exigência do 👑 Dominado. A revisão espaçada dos flashcards continua obrigatória, então novos cards do que você errou também precisam ser revisados. Experimentos resolvidos somam no atributo 👑 Maestria.
+
+<img src="docs/telas/49-lab-hub.png" width="200"> <img src="docs/telas/50-lab-cenario.png" width="200"> <img src="docs/telas/51-lab-retorno-parcial.png" width="200"> <img src="docs/telas/52-lab-resolvido.png" width="200">
 
 ---
 
@@ -427,6 +446,7 @@ Limites grátis aproximados (o Google muda de tempos em tempos; confira em AI St
 | Tamanho/qualidade das imagens salvas | `editor.js` → `IMG_MAX_WIDTH` e `IMG_QUALITY` |
 | Botões e "jeito" do assistente de IA | `ai.js` → `AI_ACTIONS` e `AI_SYSTEM` |
 | Regras de cada estágio da árvore | `skills.js` → `SKILL_RULES` |
+| Níveis, prêmios e limites do laboratório | `lab.js` → `LAB` |
 | Regras do mistério (tamanho do trecho, prêmios, quando revelar) | `discovery.js` → `MYSTERY` |
 | Texto da Crônica e regras de desbloqueio | `discovery.js` → `CHRONICLE` |
 | Relíquias | `discovery.js` → `RELICS` |

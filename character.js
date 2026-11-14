@@ -44,6 +44,7 @@ const ATTRS = {
       { label: 'conceitos dominados (bônus)', n: state.skillNodes.filter(x => x.peak === 'mastered').length, pts: 20 },
       { label: 'acertos em flashcards', n: state.cards.reduce((a, c) => a + (c.correct ?? Math.max(0, (c.box || 1) - 1)), 0), pts: 1 },
       { label: 'acertos em quizzes', n: state.quizzes.reduce((a, q) => a + (q.score || 0), 0), pts: 2 },
+      { label: 'experimentos resolvidos no laboratório', n: state.labs.filter(l => l.best >= LAB.solved).length, pts: 8 },
     ],
   },
 };
@@ -156,6 +157,7 @@ function characterSheetHTML() {
 
       ${gearSheetHTML()}
       ${chronicleLinkHTML()}
+      <div class="row center"><a class="btn" href="#/lab">🧪 Laboratório (${state.labs.filter(l => l.best >= LAB.solved).length} resolvidos)</a></div>
 
       <h3 class="char-h">🎨 Personalizar</h3>
       <div class="cust-row"><span class="cust-label">Companheiro</span><div class="species">${Object.entries(SPECIES).map(([id, sp]) => {

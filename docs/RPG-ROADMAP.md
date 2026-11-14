@@ -70,7 +70,7 @@ Each phase ships on its own, keeps all features working, and adds an end-to-end 
 - New cosmetic items enter the existing `GAME.items` with an `unlock` rule instead of a gacha-only source; stardust and wishes stay as they are.
 - **Test:** unlock rules, inventory compatibility.
 
-### Phase 6: Experiment Lab
+### Phase 6: Experiment Lab ✅ (v1.11: AI scenarios with data at 3 levels, a hint ladder, rubric grading with partial credit, a gated full solution plus alternatives, unlimited revise-and-resubmit, gaps turned into flashcards; a lab score ≥ 60% counts as practice and ≥ 80% can replace the quiz proof for Mastery, while spaced review stays mandatory. Also fixed two mobile overflow bugs found by a 21-screen QA sweep)
 - Scenario problems generated per node ("Um carro sai de… quanto tempo…?"). The user answers in free text. The AI grades with a rubric (JSON: correct / partial / incorrect, explanation, alternative solutions, next hint). Feedback is constructive, with no score penalty.
 - Lab results count as "applied practice" evidence for Mastery in Phase 2.
 - **Test:** mocked grading responses, offline fallback message.

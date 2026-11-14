@@ -21,7 +21,8 @@
    árvores de conhecimento em skills.js, a ficha do personagem
    (atributos e personalização) em character.js, as batalhas e o
    equipamento em battle.js, o modo campanha em campaign.js, as matérias
-   e cursos em subjects.js e os mistérios e a Crônica em discovery.js.
+   e cursos em subjects.js, os mistérios e a Crônica em discovery.js e
+   o laboratório de experimentos em lab.js.
    ===================================================================== */
 
 
@@ -104,6 +105,7 @@ function defaultState() {
     quizzes: [],  // quizzes feitos: { at, score, total, title, videoId?, noteId?, nodeId? }
     battles: [],  // batalhas contra o chefe: { id, at, week, mode, subject, dmg, correct, total, cardIds }
     gear: { items: [], equipped: { weapon: '', armor: '', charm: '' } }, // equipamento (ver battle.js)
+    labs: [],     // laboratório (ver lab.js): { id, at, subject, nodeId, level, scenario, hintsShown, attempts[], best, rewardTier, draft }
     subjectsMeta: {}, // matérias: { [matéria]: { program (curso) } } (ver subjects.js)
     discovery: { fragments: [] }, // Crônica de Lumi (ver discovery.js)
     campaigns: {}, // modo campanha por matéria (ver campaign.js): { checkpoints, celebrated, chapterNames, finalBest, finalDoneAt }
@@ -288,6 +290,9 @@ const ACHIEVEMENTS = [
   { id: 'mystery-1', icon: '🔮', name: 'Primeiro Mistério', desc: 'Resolva o mistério de uma aula', test: () => mysteriesSolved() >= 1 },
   { id: 'mystery-5', icon: '🕵️', name: 'Detetive', desc: 'Resolva 5 mistérios de aula', test: () => mysteriesSolved() >= 5 },
   { id: 'chronicle-all', icon: '📜', name: 'A Crônica Completa', desc: 'Revele todos os fragmentos da Crônica de Lumi', test: s => CHRONICLE.every(c => s.discovery.fragments.includes(c.id)) },
+  { id: 'lab-1', icon: '🧪', name: 'Cientista', desc: 'Resolva um experimento do laboratório', test: s => (s.labs || []).some(l => l.best >= 70) },
+  { id: 'lab-hard', icon: '🔥', name: 'Experimento de Mestre', desc: 'Tire 90+ num experimento nível Mestre', test: s => (s.labs || []).some(l => l.level === 'hard' && l.best >= 90) },
+  { id: 'lab-10', icon: '⚗️', name: 'Laboratório Cheio', desc: 'Resolva 10 experimentos', test: s => (s.labs || []).filter(l => l.best >= 70).length >= 10 },
   { id: 'night', icon: '🦉', name: 'Coruja', desc: 'Termine uma sessão depois das 23h', test: s => s.sessions.some(x => { const h = new Date(x.endedAt).getHours(); return h >= 23 || h < 4; }) },
 ];
 
@@ -386,6 +391,7 @@ const QUESTS = [
   { id: 'skill1', icon: '🌳', text: 'Avance um conceito na árvore', goal: 1, val: d => d.skillUps, when: s => s.skillNodes.length > 0 },
   { id: 'battle1', icon: '⚔️', text: 'Enfrente o chefe numa batalha', goal: 1, val: d => d.battles, when: s => s.cards.length >= 4 || !!aiConfig().key },
   { id: 'mystery1', icon: '🔮', text: 'Resolva o mistério de uma aula', goal: 1, val: d => d.mysteries, when: s => !!aiConfig().key && s.videos.some(v => v.kind === 'youtube') },
+  { id: 'lab1', icon: '🧪', text: 'Resolva um experimento no laboratório', goal: 1, val: d => d.labs, when: s => !!aiConfig().key && (s.notes.some(n => n.folder && !n.seed) || s.videos.length > 0) },
   { id: 'quiz1', icon: '❓', text: 'Faça um quiz com a IA', goal: 1, val: d => d.quizzes, when: () => !!aiConfig().key },
 ];
 
@@ -412,6 +418,7 @@ function todayStats() {
     skillUps: daily.skillUps || 0,
     battles: daily.battles || 0,
     mysteries: daily.mysteries || 0,
+    labs: daily.labs || 0,
   };
 }
 
@@ -872,7 +879,7 @@ const snippet = (text, len = 90) => text.replace(/[#*`>\[\]]/g, '').replace(/\s+
    6. TELAS
    Cada função view*() desenha uma tela dentro de <main id="view">.
    --------------------------------------------------------------------- */
-const ui = { noteFolder: '', noteTag: '', reviewed: 0, videoTab: 'note', videoSticky: true }; // estado temporário da interface (não é salvo)
+const ui = { noteFolder: '', noteTag: '', reviewed: 0, videoTab: 'note', videoSticky: true, labSubject: '' }; // estado temporário da interface (não é salvo)
 
 /* ===== Início ===== */
 function viewHome(el) {
@@ -1976,6 +1983,7 @@ function route() {
     case 'arsenal': viewArsenal(el); break;
     case 'campaign': viewCampaign(el, a); break;
     case 'chronicle': viewChronicle(el); break;
+    case 'lab': a ? viewLab(el, a) : viewLabHub(el); break;
     default: viewHome(el);
   }
   document.querySelectorAll('.tabbar a').forEach(t => t.classList.toggle('on', t.dataset.tab === name || (name === 'home' && t.dataset.tab === 'home')));
