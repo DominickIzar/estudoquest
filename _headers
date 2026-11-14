@@ -1,0 +1,9 @@
+# Configuração para Cloudflare Pages / Netlify (o GitHub Pages ignora este arquivo).
+# O "service worker" (sw.js) e a página principal nunca ficam presos em cache,
+# assim cada atualização do app chega ao celular na próxima abertura.
+/sw.js
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/
+  Cache-Control: no-cache
