@@ -155,6 +155,7 @@ function characterSheetHTML() {
       }).join('')}</div>
 
       ${gearSheetHTML()}
+      ${chronicleLinkHTML()}
 
       <h3 class="char-h">🎨 Personalizar</h3>
       <div class="cust-row"><span class="cust-label">Companheiro</span><div class="species">${Object.entries(SPECIES).map(([id, sp]) => {

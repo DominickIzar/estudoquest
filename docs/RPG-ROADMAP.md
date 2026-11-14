@@ -65,7 +65,7 @@ Each phase ships on its own, keeps all features working, and adds an end-to-end 
 - A visual path screen with a map-like vertical road reuses the tree layout.
 - **Test:** chapter unlocking derived from node peaks.
 
-### Phase 5: Discovery system
+### Phase 5: Discovery system ✅ (v1.10: lesson mysteries, where the AI watches a random 8-minute clip, hides a detail question and grades a free-text answer; a 10-fragment Chronicle; 4 milestone-only relics kept out of the wish pool. Shipped with subjects/courses and per-subject focus minutes)
 - Story fragments ("Crônicas de Lumi") and mysteries unlocked by learning milestones (first mastered node, first full chapter, 7 review days…).
 - New cosmetic items enter the existing `GAME.items` with an `unlock` rule instead of a gacha-only source; stardust and wishes stay as they are.
 - **Test:** unlock rules, inventory compatibility.

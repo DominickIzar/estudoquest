@@ -153,7 +153,7 @@ function makeWish() {
   p.wishes = (p.wishes || 0) + 1;
   const rarity = rollRarity();
   p.pity = rarity === 'comum' ? p.pity + 1 : 0;
-  const pool = GAME.items.filter(i => i.rarity === rarity);
+  const pool = GAME.items.filter(i => i.rarity === rarity && !i.relic); // relíquias só saem por marcos (discovery.js)
   const item = pool[Math.floor(Math.random() * pool.length)];
   const dup = p.inventory.includes(item.id);
   if (dup) p.stardust += GAME.rarity[rarity].refund;
@@ -400,7 +400,7 @@ function viewWish(el, results = null) {
           return has
             ? `<button class="inv-item ${on ? 'on' : ''}" data-equip="${i.id}" style="--rc:${R[i.rarity].color}" title="${on ? 'Tirar' : 'Usar'}">
                  <span>${itemIcon(i)}</span><small>${esc(i.name)}</small>${on ? '<em>em uso</em>' : ''}</button>`
-            : `<div class="inv-item locked" style="--rc:${R[i.rarity].color}"><span>❔</span><small>${R[i.rarity].label}</small></div>`;
+            : `<div class="inv-item locked" style="--rc:${R[i.rarity].color}"><span>${i.relic ? '🏺' : '❔'}</span><small>${i.relic ? 'Relíquia (ver Crônica)' : R[i.rarity].label}</small></div>`;
         }).join('')}</div>`).join('')}
     </section>`;
 

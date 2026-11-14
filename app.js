@@ -20,7 +20,8 @@
    o mascote, os Desejos, o chefe e os sons de foco em game.js, as
    árvores de conhecimento em skills.js, a ficha do personagem
    (atributos e personalização) em character.js, as batalhas e o
-   equipamento em battle.js e o modo campanha em campaign.js.
+   equipamento em battle.js, o modo campanha em campaign.js, as matérias
+   e cursos em subjects.js e os mistérios e a Crônica em discovery.js.
    ===================================================================== */
 
 
@@ -103,6 +104,8 @@ function defaultState() {
     quizzes: [],  // quizzes feitos: { at, score, total, title, videoId?, noteId?, nodeId? }
     battles: [],  // batalhas contra o chefe: { id, at, week, mode, subject, dmg, correct, total, cardIds }
     gear: { items: [], equipped: { weapon: '', armor: '', charm: '' } }, // equipamento (ver battle.js)
+    subjectsMeta: {}, // matérias: { [matéria]: { program (curso) } } (ver subjects.js)
+    discovery: { fragments: [] }, // Crônica de Lumi (ver discovery.js)
     campaigns: {}, // modo campanha por matéria (ver campaign.js): { checkpoints, celebrated, chapterNames, finalBest, finalDoneAt }
     skillNodes: [], // árvores de conhecimento (ver skills.js): { id, subject, title, icon, noteIds, videoIds, requires, order, peak, peakAt }
     profile: {
@@ -117,7 +120,7 @@ function defaultState() {
     // ✏️ PERSONALIZE: tempos padrão do Pomodoro (em minutos). Também dá pra mudar na tela Perfil.
     // dailyGoal = meta mínima do dia (min). Pequena de propósito: o que cria o hábito é não falhar, não a quantidade.
     settings: { focus: 25, shortBreak: 5, longBreak: 15, cycles: 4, sound: true, dailyGoal: 5, starMode: true, pauseOnMark: false, focusSound: 'off', bossHP: 150 },
-    timer: { mode: 'focus', running: false, endsAt: null, remaining: 25 * 60, duration: 25 * 60, cycle: 0, taskId: '', intention: '', leftAt: null, fell: false, pendingRating: null },
+    timer: { mode: 'focus', running: false, endsAt: null, remaining: 25 * 60, duration: 25 * 60, cycle: 0, taskId: '', subject: '', intention: '', leftAt: null, fell: false, pendingRating: null },
   };
 }
 
@@ -166,6 +169,7 @@ function normalize(s) {
   });
   return {
     ...d, ...s, notes,
+    discovery: { ...d.discovery, ...s.discovery },
     gear: { ...d.gear, ...s.gear, equipped: { ...d.gear.equipped, ...s.gear?.equipped } },
     profile: { ...d.profile, ...s.profile, equipped: { ...d.profile.equipped, ...s.profile?.equipped }, attrPeak: { ...d.profile.attrPeak, ...s.profile?.attrPeak } },
     settings: { ...d.settings, ...s.settings },
@@ -281,6 +285,9 @@ const ACHIEVEMENTS = [
   { id: 'gear-legend', icon: '🗡️', name: 'Arma Lendária', desc: 'Encontre um equipamento lendário', test: s => (s.gear?.items || []).some(i => i.rarity === 'lendario') },
   { id: 'checkpoint-1', icon: '⛳', name: 'Primeiro Checkpoint', desc: 'Conclua um capítulo da campanha', test: s => Object.values(s.campaigns || {}).some(c => Object.keys(c.checkpoints || {}).length > 0) },
   { id: 'campaign-1', icon: '🏰', name: 'Campanha Concluída', desc: 'Vença o desafio final de uma matéria', test: s => Object.values(s.campaigns || {}).some(c => c.finalDoneAt) },
+  { id: 'mystery-1', icon: '🔮', name: 'Primeiro Mistério', desc: 'Resolva o mistério de uma aula', test: () => mysteriesSolved() >= 1 },
+  { id: 'mystery-5', icon: '🕵️', name: 'Detetive', desc: 'Resolva 5 mistérios de aula', test: () => mysteriesSolved() >= 5 },
+  { id: 'chronicle-all', icon: '📜', name: 'A Crônica Completa', desc: 'Revele todos os fragmentos da Crônica de Lumi', test: s => CHRONICLE.every(c => s.discovery.fragments.includes(c.id)) },
   { id: 'night', icon: '🦉', name: 'Coruja', desc: 'Termine uma sessão depois das 23h', test: s => s.sessions.some(x => { const h = new Date(x.endedAt).getHours(); return h >= 23 || h < 4; }) },
 ];
 
@@ -378,6 +385,7 @@ const QUESTS = [
   { id: 'park1', icon: '💭', text: 'Use o 💭 em vez de pegar o celular', goal: 1, val: d => d.parked },
   { id: 'skill1', icon: '🌳', text: 'Avance um conceito na árvore', goal: 1, val: d => d.skillUps, when: s => s.skillNodes.length > 0 },
   { id: 'battle1', icon: '⚔️', text: 'Enfrente o chefe numa batalha', goal: 1, val: d => d.battles, when: s => s.cards.length >= 4 || !!aiConfig().key },
+  { id: 'mystery1', icon: '🔮', text: 'Resolva o mistério de uma aula', goal: 1, val: d => d.mysteries, when: s => !!aiConfig().key && s.videos.some(v => v.kind === 'youtube') },
   { id: 'quiz1', icon: '❓', text: 'Faça um quiz com a IA', goal: 1, val: d => d.quizzes, when: () => !!aiConfig().key },
 ];
 
@@ -403,6 +411,7 @@ function todayStats() {
     quizzes: daily.quizzes || 0,
     skillUps: daily.skillUps || 0,
     battles: daily.battles || 0,
+    mysteries: daily.mysteries || 0,
   };
 }
 
@@ -607,7 +616,8 @@ function timerFinish(skipped = false) {
   if (t.mode === 'focus' && !skipped) {
     const minutes = Math.round(t.duration / 60);
     const star = state.settings.starMode && !t.fell && !leftTooLong(t);
-    const ses = { id: uid(), minutes, endedAt: now(), taskId: t.taskId || null, intention: t.intention || '', star, rating: null };
+    const subject = t.subject || (t.taskId && state.tasks.find(x => x.id === t.taskId)?.tag) || '';
+    const ses = { id: uid(), minutes, endedAt: now(), taskId: t.taskId || null, subject, intention: t.intention || '', star, rating: null };
     state.sessions.push(ses);
     t.cycle++;
     t.intention = '';
@@ -1089,36 +1099,47 @@ const thumb = v => v.kind === 'youtube'
   : '<div class="thumb-ph">🎬</div>';
 
 function viewVideos(el) {
-  const courses = unique(state.videos.map(v => v.course || 'Sem curso'));
+  // Agrupa: curso (opcional) → matéria → aulas
+  const subjects = unique(state.videos.map(v => v.course || '')).concat(state.videos.some(v => !v.course) ? [''] : []).filter((s, i, a) => a.indexOf(s) === i);
+  const programs = unique(subjects.map(programOf)).concat(subjects.some(s => !programOf(s)) ? [''] : []);
   const doneCount = state.videos.filter(v => v.done).length;
+  const mins = minutesBySubject();
 
-  el.innerHTML = `
-    <div class="view-head"><h1>🎬 Aulas</h1><div class="row"><a class="btn" href="#/skills" title="Árvores de conhecimento" aria-label="Árvores de conhecimento">🌳</a><button class="btn primary" id="addVideo">+ Adicionar aula</button></div></div>
-    ${state.videos.length ? `<p class="muted small">${doneCount} de ${state.videos.length} concluídas</p>` : `
-      <div class="card empty">
-        <p>Cole o link de uma videoaula do YouTube (ou de um arquivo .mp4 na internet).</p>
-        <p class="muted small">O app lembra onde você parou e deixa você anotar no momento exato do vídeo.</p>
-      </div>`}
-    ${courses.map(c => {
-      const vids = state.videos.filter(v => (v.course || 'Sem curso') === c);
-      const pct = Math.round(vids.reduce((a, v) => a + videoPct(v), 0) / vids.length);
-      return `
+  const subjectSection = s => {
+    const vids = state.videos.filter(v => (v.course || '') === s);
+    const pct = Math.round(vids.reduce((a, v) => a + videoPct(v), 0) / vids.length);
+    return `
       <section class="course">
-        <div class="row between"><h3>📚 ${esc(c)}</h3><span class="muted small">${pct}%</span></div>
+        <div class="row between"><h3>📚 ${esc(s || 'Sem matéria')} <button class="icon-btn" data-subject="${esc(s)}" aria-label="Editar matéria ${esc(s || 'sem nome')}" title="Renomear / escolher curso">✏️</button></h3>
+          <span class="muted small">${mins[s] ? `⏱ ${fmtMinutes(mins[s])} · ` : ''}${pct}%</span></div>
         <div class="bar thin"><i style="width:${pct}%"></i></div>
         <div class="video-grid">
           ${vids.map(v => `
             <a class="video-card ${v.done ? 'done' : ''}" href="#/videos/${v.id}">
-              <div class="thumb">${thumb(v)}${v.done ? '<span class="badge">✓</span>' : ''}</div>
+              <div class="thumb">${thumb(v)}${v.done ? '<span class="badge">✓</span>' : ''}${v.mystery?.status === 'open' ? '<span class="badge mystery-badge" title="Mistério em aberto">🔮</span>' : ''}</div>
               <strong>${esc(v.title)}</strong>
               <div class="bar thin"><i style="width:${videoPct(v)}%"></i></div>
-              <span class="muted small">${videoPct(v)}%${v.marks.length ? ` · ${v.marks.length} anotaç${v.marks.length === 1 ? 'ão' : 'ões'}` : ''}</span>
+              <span class="muted small">${videoPct(v)}%${v.marks.length ? ` · ${v.marks.length} anotaç${v.marks.length === 1 ? 'ão' : 'ões'}` : ''}${v.mysteriesSolved ? ` · 🔮 ${v.mysteriesSolved}` : ''}</span>
             </a>`).join('')}
         </div>
       </section>`;
+  };
+
+  el.innerHTML = `
+    <div class="view-head"><h1>🎬 Aulas</h1><div class="row"><a class="btn" href="#/skills" title="Árvores de conhecimento" aria-label="Árvores de conhecimento">🌳</a><button class="btn primary" id="addVideo">+ Adicionar aula</button></div></div>
+    ${state.videos.length ? `<p class="muted small">${doneCount} de ${state.videos.length} concluídas · toque em ✏️ para renomear a matéria ou colocá-la num curso</p>` : `
+      <div class="card empty">
+        <p>Cole o link de uma videoaula do YouTube (ou de um arquivo .mp4 na internet).</p>
+        <p class="muted small">O app lembra onde você parou e deixa você anotar no momento exato do vídeo.</p>
+      </div>`}
+    ${programs.map(p => {
+      const subs = subjects.filter(s => programOf(s) === p);
+      if (!subs.length) return '';
+      return `${p ? `<h2 class="program-head">🎓 ${esc(p)}</h2>` : programs.length > 1 ? '<h2 class="program-head muted">Matérias sem curso</h2>' : ''}${subs.map(subjectSection).join('')}`;
     }).join('')}`;
 
   el.querySelector('#addVideo').onclick = () => videoDialog();
+  el.querySelectorAll('[data-subject]').forEach(b => b.onclick = () => subjectDialog(b.dataset.subject));
 }
 
 function videoDialog(v) {
@@ -1128,8 +1149,10 @@ function videoDialog(v) {
     fields: `
       <label>Link do vídeo<input name="url" required placeholder="https://youtube.com/watch?v=…" value="${esc(v?.url || '')}"></label>
       <label>Título <span class="muted small">(opcional para YouTube)</span><input name="title" value="${esc(v?.title || '')}"></label>
-      <label>Curso / matéria<input name="course" list="courseList" value="${esc(v?.course || '')}" placeholder="Ex.: Cálculo I"></label>
-      <datalist id="courseList">${courses.map(c => `<option value="${esc(c)}">`).join('')}</datalist>`,
+      <label>Matéria<input name="course" list="courseList" value="${esc(v?.course || '')}" placeholder="Ex.: Formação de Preços"></label>
+      <datalist id="courseList">${unique([...courses, ...skillSubjects()]).map(c => `<option value="${esc(c)}">`).join('')}</datalist>
+      <label>Curso <span class="small">(opcional, ex.: MBA, faculdade)</span><input name="program" list="programList" value="${esc(programOf(v?.course || ''))}" placeholder="Ex.: MBA Comércio Exterior"></label>
+      <datalist id="programList">${allPrograms().map(p => `<option value="${esc(p)}">`).join('')}</datalist>`,
     onSubmit: data => {
       const url = data.url.trim();
       const ytId = parseYouTubeId(url);
@@ -1137,6 +1160,7 @@ function videoDialog(v) {
       const target = v || { id: uid(), position: 0, duration: 0, watched: 0, done: false, marks: [], lastOpened: 0, createdAt: now() };
       Object.assign(target, { url, ytId, kind: ytId ? 'youtube' : 'file', title: data.title.trim() || target.title || 'Carregando título…', course: data.course.trim() });
       if (!v) state.videos.push(target);
+      if (target.course && data.program.trim()) subjectMeta(target.course).program = data.program.trim();
       save(); route();
       if (ytId && !data.title.trim() && !v) fetchYouTubeTitle(target);
     },
@@ -1246,6 +1270,7 @@ function viewVideo(el, id, startParam) {
           <button class="btn small-btn" id="toggleDone">${v.done ? '↺ Desmarcar' : '✓ Concluída'}</button>
           <button class="btn small-btn ${ui.videoSticky ? 'on' : ''}" id="pinVideo" title="Deixar o vídeo fixo no topo enquanto você rola e escreve">📌</button>
         </div>
+        ${mysteryHTML(v)}
         <div class="tabs" role="tablist">
           <button class="tab ${tab === 'note' ? 'on' : ''}" data-tab="note">📝 Anotações</button>
           <button class="tab ${tab === 'marks' ? 'on' : ''}" data-tab="marks">⏱ Marcações <span class="count" id="marksCount">${v.marks.length}</span></button>
@@ -1300,6 +1325,8 @@ function viewVideo(el, id, startParam) {
     }
     return lesson;
   };
+  if (!state.timer.running && v.course) state.timer.subject = v.course; // o próximo Pomodoro já conta para esta matéria
+  bindMystery(el, v, () => player);
   const ed = createEditor(el.querySelector('#lessonEditor'), {
     html: lesson?.html || '',
     getPlayer: () => player,
@@ -1632,12 +1659,19 @@ function viewFocus(el) {
     </section>` : ''}
 
     <section class="card focus-task">
-      <label>Estudando para:
-        <select id="focusTask">
-          <option value="">— nada específico —</option>
-          ${openTasks.map(x => `<option value="${x.id}" ${t.taskId === x.id ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}
+      <label>📚 Estudando qual matéria?
+        <select id="focusSubject">
+          <option value="">— escolha a matéria —</option>
+          ${unique([...skillSubjects(), t.subject]).map(x => `<option ${t.subject === x ? 'selected' : ''}>${esc(x)}</option>`).join('')}
+          <option value="__new">+ Nova matéria…</option>
         </select>
       </label>
+      ${openTasks.length ? `<label>✅ Tarefa <span class="small">(opcional)</span>
+        <select id="focusTask">
+          <option value="">— nenhuma —</option>
+          ${openTasks.filter(x => !t.subject || !x.tag || x.tag === t.subject).map(x => `<option value="${x.id}" ${t.taskId === x.id ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}
+        </select>
+      </label>` : ''}
       <label class="switch"><input type="checkbox" id="starMode" ${s.starMode ? 'checked' : ''}> ⭐ Modo estrela (tela fica acesa; se sair do app, a estrela cai)</label>
       <label>🎧 Som de fundo durante o foco
         <select id="focusSound">${Object.entries(SOUNDS).map(([k, v]) => `<option value="${k}" ${s.focusSound === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
@@ -1648,7 +1682,7 @@ function viewFocus(el) {
       <h3>Hoje: ${focusMinutes({ sessions: today })} min · ciclo ${(t.cycle % s.cycles) + 1}/${s.cycles}</h3>
       <ul class="plain">${recent.map(x => {
         const tk = x.taskId && state.tasks.find(y => y.id === x.taskId);
-        const what = x.note || x.intention || (tk && tk.title) || '';
+        const what = [sessionSubject(x), x.note || x.intention || (tk && tk.title)].filter(Boolean).join(' · ');
         return `<li>${x.star ? '⭐' : '🍅'} ${x.minutes} min ${rate(x.rating)} ${what ? `· ${esc(what)}` : ''} <span class="muted small">${new Date(x.endedAt).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></li>`;
       }).join('') || '<li class="muted">Nenhuma sessão ainda. A primeira é a mais importante!</li>'}</ul>
     </section>`;
@@ -1657,7 +1691,18 @@ function viewFocus(el) {
   el.querySelector('#timerToggle').onclick = () => { t.running ? timerPause() : timerStart(); route(); };
   el.querySelector('#timerReset').onclick = () => timerSetMode(t.mode);
   el.querySelector('#timerSkip').onclick = () => timerFinish(true);
-  el.querySelector('#focusTask').onchange = e => { t.taskId = e.target.value; save(); };
+  el.querySelector('#focusSubject').onchange = e => {
+    let v = e.target.value;
+    if (v === '__new') { v = (prompt('Nome da matéria:') || '').trim(); }
+    t.subject = v;
+    save(); route();
+  };
+  el.querySelector('#focusTask')?.addEventListener('change', e => {
+    t.taskId = e.target.value;
+    const tag = state.tasks.find(x => x.id === t.taskId)?.tag;
+    if (tag && !t.subject) t.subject = tag; // a tarefa já diz a matéria
+    save(); route();
+  });
   el.querySelector('#starMode').onchange = e => { s.starMode = e.target.checked; save(); };
   el.querySelector('#focusSound').onchange = e => { s.focusSound = e.target.value; save(); syncNoise(); };
   const intent = el.querySelector('#intention');
@@ -1777,6 +1822,7 @@ function viewProfile(el) {
     <section class="card">
       <h3>📊 Sua semana</h3>
       ${weekChartHTML()}
+      ${subjectStatsHTML()}
     </section>
 
     <section class="card">
@@ -1913,6 +1959,7 @@ function route() {
   checkSkills(); // algum conceito subiu de estágio desde a última tela?
   checkAttributes(); // atributos só sobem (ver character.js)
   checkCampaigns(); // checkpoints novos da campanha (ver campaign.js)
+  checkDiscovery(); // fragmentos da Crônica e relíquias (ver discovery.js)
 
   switch (name) {
     case 'notes': a ? viewNote(el, a) : viewNotes(el); break;
@@ -1928,6 +1975,7 @@ function route() {
     case 'battle': viewBattle(el); break;
     case 'arsenal': viewArsenal(el); break;
     case 'campaign': viewCampaign(el, a); break;
+    case 'chronicle': viewChronicle(el); break;
     default: viewHome(el);
   }
   document.querySelectorAll('.tabbar a').forEach(t => t.classList.toggle('on', t.dataset.tab === name || (name === 'home' && t.dataset.tab === 'home')));

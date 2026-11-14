@@ -44,6 +44,8 @@ Um app de estudos que junta num só lugar **caderno de notas**, **videoaulas com
 | `ai.js` | O assistente de IA (Gemini, plano grátis) |
 | `skills.js` | Árvores de conhecimento: conceitos por matéria, estágios Descoberto → Praticado → Dominado |
 | `character.js` | Ficha do personagem: atributos (Conhecimento, Disciplina, Maestria), classe e personalização |
+| `subjects.js` | Matérias e cursos: renomear em todo o app, minutos estudados por matéria |
+| `discovery.js` | Mistério da aula (a IA esconde uma pergunta num trecho), Crônica de Lumi e relíquias |
 | `campaign.js` | Modo campanha: capítulos, checkpoints, missões e desafio final por matéria |
 | `battle.js` | Batalhas contra o chefe (perguntas) e equipamento estilo Diablo |
 | `game.js` | Mascote, pó de estrela e Desejos, chefe da semana, rival, sons de foco, provas, lembrete no calendário |
@@ -70,6 +72,7 @@ O player oficial do YouTube permite ler "em que segundo o vídeo está", e é is
 - **Foco**: Pomodoro (foco, pausa curta, pausa longa), botão **"Só 5 minutinhos"** para vencer a preguiça de começar, vincular a sessão a uma tarefa, som e notificação ao terminar. O timer continua certo mesmo se você trocar de tela.
 - **Busca única** no topo: procura em notas, aulas (inclusive nas anotações com tempo) e tarefas.
 - **Gamificação (pode ser desligada no Perfil)**: XP, níveis, sequência de dias 🔥, 18 conquistas e uma coleção de 13 itens.
+- **Matérias, cursos e mistérios (v1.10)**: veja a seção [Matérias, cursos e descobertas](#-matérias-cursos-e-descobertas-v110).
 - **Modo campanha (v1.9)**: veja a seção [Modo campanha](#️-modo-campanha-v19).
 - **Batalhas e equipamento (v1.8)**: veja a seção [Batalhas e equipamento](#️-batalhas-e-equipamento-v18).
 - **Ficha do personagem (v1.7)**: veja a seção [Ficha do personagem](#-ficha-do-personagem-v17).
@@ -114,6 +117,9 @@ Perfil        { xp, gamification, achievements, shields, frozen[],
                 pity, wishes, bossWins[] }
 Prova         { id, name, date (AAAA-MM-DD) }
 Quiz feito    { at, score, total, title, videoId?, noteId?, nodeId? }
+Matérias      subjectsMeta[matéria] = { program (curso) } · Sessão de foco ganhou "subject"
+Mistério      Videoaula.mystery = { question, answer, explanation, hint, t, start, end, status, attempts } + mysteriesSolved
+Crônica       discovery = { fragments[] }
 Campanha      campaigns[matéria] = { checkpoints {capítulo: data}, celebrated, chapterNames, finalBest, finalDoneAt }
 Batalha       { id, at, week, mode ('cards'|'ai'), subject, dmg, correct, total, cardIds[] }
 Item          { id, slot, base, rarity, ilvl, subject, affixes[{k, v}], unique, name, power }
@@ -219,6 +225,28 @@ Cada uma foi inspirada num app que funciona para muita gente e adaptada para est
 - Ative o **Modo Foco** do celular durante o Pomodoro (Android: Bem-estar digital; iPhone: Ajustes → Foco). O app não consegue bloquear outros apps sozinho.
 - Crie um **alarme** no horário do seu plano com o nome "📚 EstudoQuest".
 - Coloque o ícone do app na **primeira tela** do celular, no lugar de uma rede social.
+
+---
+
+## 🔮 Matérias, cursos e descobertas (v1.10)
+
+**Matérias e cursos**
+- Cada aula pertence a uma **matéria**, e a matéria pode pertencer a um **curso** opcional (ex.: "MBA Comércio Exterior"). Em 🎬 Aulas, tudo aparece agrupado: 🎓 curso → 📚 matéria → aulas.
+- O ✏️ ao lado da matéria **renomeia em todo o app** (aulas, notas, tarefas, árvore, campanha e minutos estudados) e escolhe o curso.
+- No ⏱️ Foco, "📚 Estudando qual matéria?" lista suas matérias (ou crie uma nova). Abrir uma aula já deixa a matéria dela escolhida para o próximo Pomodoro.
+- Em Perfil → 📊 Sua semana, aparecem os **minutos por matéria** (esta semana e no total), para você ver o que estudou mais.
+
+**🔮 Mistério da aula** (fase 5 do modo RPG; ideia da usuária)
+- Na página da aula, "Criar o mistério": a IA assiste **um trecho de ~8 minutos escolhido ao acaso** e esconde ali uma pergunta sobre um detalhe (um número, um exemplo, uma definição). Você não sabe em que parte está, então precisa **assistir à aula para descobrir**. Usar só um trecho gasta bem menos do limite grátis do que a aula inteira.
+- Responda **com suas palavras**: a IA corrige pelo sentido, aceitando outras palavras e erros de digitação. Errou? Recebe um comentário gentil (sem a resposta) e pode pedir uma 💡 dica.
+- **Sem punição:** dá para revelar a resposta depois de ver 90% da aula ou de 3 tentativas. Só não ganha o prêmio.
+- Resolver dá XP e ✦ (até 3 mistérios por aula) e mostra o ▶ momento exato em que a resposta aparece.
+
+**📜 Crônica de Lumi e 🏺 relíquias**
+- Uma história em 10 fragmentos que se revelam com marcos de aprendizado: mistérios resolvidos, conceitos dominados, checkpoints, revisões em dias diferentes. Fica no Perfil → 📜 Crônica.
+- **Relíquias** são enfeites que **não saem nos Desejos**, só com esses marcos: 🔍 Lupa de detetive, o título "Detetive das Aulas", o tema "Biblioteca Ancestral" e o título "Guardião(ã) da Crônica".
+
+<img src="docs/telas/43-aulas-curso.png" width="200"> <img src="docs/telas/44-foco-materia.png" width="200"> <img src="docs/telas/45-misterio.png" width="200"> <img src="docs/telas/47-cronica.png" width="200">
 
 ---
 
@@ -399,6 +427,9 @@ Limites grátis aproximados (o Google muda de tempos em tempos; confira em AI St
 | Tamanho/qualidade das imagens salvas | `editor.js` → `IMG_MAX_WIDTH` e `IMG_QUALITY` |
 | Botões e "jeito" do assistente de IA | `ai.js` → `AI_ACTIONS` e `AI_SYSTEM` |
 | Regras de cada estágio da árvore | `skills.js` → `SKILL_RULES` |
+| Regras do mistério (tamanho do trecho, prêmios, quando revelar) | `discovery.js` → `MYSTERY` |
+| Texto da Crônica e regras de desbloqueio | `discovery.js` → `CHRONICLE` |
+| Relíquias | `discovery.js` → `RELICS` |
 | Recompensas e regras da campanha (checkpoint, desafio final) | `campaign.js` → `CAMPAIGN` |
 | Regras das batalhas (perguntas, dano, itens por dia) | `battle.js` → `BATTLE` |
 | Tipos de item, bônus e poderes lendários | `battle.js` → `GEAR_BASES`, `AFFIXES`, `UNIQUES` |

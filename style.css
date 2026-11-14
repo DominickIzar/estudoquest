@@ -724,3 +724,33 @@ legend { font-size: .85rem; color: var(--muted); padding: 0 .3rem; }
 .side-quests li { align-items: center; }
 .final-card { border-color: color-mix(in srgb, var(--gold) 45%, var(--border)); background: linear-gradient(160deg, #f0c46b14, var(--surface) 60%); }
 .st-final .st-marker { font-size: 1.2rem; }
+
+/* =====================================================================
+   v1.10: Matérias/cursos, mistérios e Crônica
+   ===================================================================== */
+.program-head { font-size: 1.05rem; margin: 1.4rem 0 .6rem; padding-bottom: .3rem; border-bottom: 1px solid var(--border); }
+.course h3 { display: flex; align-items: center; gap: .2rem; }
+.mystery-badge { left: 6px; right: auto; background: var(--btn-from); }
+
+/* Minutos por matéria */
+.subject-stats { display: grid; gap: .5rem; }
+.ss-name { font-weight: 600; }
+
+/* Mistério da aula */
+.mystery { border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  background: radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%), var(--surface); }
+.mystery h3 { margin-bottom: .3rem; }
+.mystery-q { font-size: 1.05rem; font-weight: 700; margin: .3rem 0 .7rem; }
+.mystery.solved { border-color: var(--gold); background: radial-gradient(ellipse at 100% 0%, #f0c46b22, transparent 60%), var(--surface); }
+.mystery .ts { margin-left: .3rem; }
+.mystery button:disabled { opacity: .45; }
+
+/* Crônica de Lumi */
+.chronicle { list-style: none; padding: 0; margin: 1rem 0; display: grid; gap: .8rem; }
+.fragment { position: relative; padding: 1rem 1rem 1rem 3.2rem; border-radius: 14px; border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--border));
+  background: linear-gradient(160deg, #f0c46b12, var(--surface) 55%); }
+.fragment h3 { margin: 0 0 .3rem; color: var(--gold); font-family: Georgia, "Times New Roman", serif; }
+.fragment p { margin: 0; line-height: 1.6; font-family: Georgia, "Times New Roman", serif; }
+.frag-n { position: absolute; left: .9rem; top: 1rem; font-weight: 800; color: var(--gold); font-family: Georgia, serif; }
+.fragment.locked { border-style: dashed; background: var(--surface); opacity: .7; }
+.fragment.locked h3 { color: var(--muted); }
